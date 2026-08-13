@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_colors.dart';
@@ -11,29 +12,41 @@ class AlienHeader extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
       titleSpacing: 16,
       title: Row(
         children: [
           Image.asset(
             'assets/images/alien_innovations_logo.png',
-            width: 30,
-            height: 30,
+            width: 32,
+            height: 32,
             fit: BoxFit.contain,
           ),
           const SizedBox(width: 10),
           Text(
             AppStrings.brandName,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppColors.purple,
+            style: GoogleFonts.inter(
+              fontSize: 17,
               fontWeight: FontWeight.w700,
+              color: AppColors.purple,
+              letterSpacing: -0.2,
             ),
           ),
         ],
       ),
       actions: [
-        IconButton(
-          onPressed: onOpenSettings,
-          icon: const Icon(Icons.settings_outlined),
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: IconButton(
+            onPressed: onOpenSettings,
+            icon: const Icon(
+              Icons.settings_outlined,
+              color: AppColors.charcoal,
+              size: 24,
+            ),
+          ),
         ),
       ],
       bottom: PreferredSize(

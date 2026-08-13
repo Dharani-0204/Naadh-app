@@ -73,11 +73,12 @@ class _AppShellState extends State<AppShell> {
 
     await Navigator.of(context).pushNamed(
       AppRoutes.processing,
-      arguments: () {
-        Navigator.of(context).pushReplacementNamed(
+      arguments: () async {
+        await Navigator.of(context).pushReplacementNamed(
           AppRoutes.documentResults,
           arguments: mockOutput,
         );
+        if (mounted) setState(() => _pageCount = 0);
       },
     );
   }
@@ -97,6 +98,15 @@ class _AppShellState extends State<AppShell> {
             onCapture: _capture,
             onFinish: _finish,
             pageCount: _pageCount,
+            onDeletePage: () {
+              if (mounted) {
+                setState(() {
+                  if (_pageCount > 0) {
+                    _pageCount--;
+                  }
+                });
+              }
+            },
           ),
           const OutputScreen(),
           const FilesScreen(),
