@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../core/constants/app_strings.dart';
 import '../core/theme/app_theme.dart';
-import '../features/device/data/mock_reader_device.dart';
+import '../features/device/data/raspberry_pi_device.dart';
 import '../features/device/domain/reader_device.dart';
 import '../features/files/presentation/files_screen.dart';
 import '../features/home/presentation/home_screen.dart';
@@ -38,7 +38,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  final MockReaderDevice _device = MockReaderDevice();
+  final RaspberryPiDevice _device = RaspberryPiDevice();
   late final StreamSubscription<ReaderConnectionStatus> _statusSub;
   ReaderConnectionStatus _status = ReaderConnectionStatus.connecting;
   MainTab _tab = MainTab.home;
@@ -52,6 +52,8 @@ class _AppShellState extends State<AppShell> {
         setState(() => _status = status);
       }
     });
+
+    _device.connect();
   }
 
   @override
@@ -120,3 +122,4 @@ class _AppShellState extends State<AppShell> {
     );
   }
 }
+
