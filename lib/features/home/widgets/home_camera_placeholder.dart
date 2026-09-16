@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/pi_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../device/domain/reader_device.dart';
+import 'mjpeg_camera_view.dart';
 
+/// Camera preview area on the home screen.
+///
+/// Always displays the live MJPEG stream from the Raspberry Pi camera.
+/// If the Pi is unreachable, [MjpegCameraView] shows an error + retry button.
+/// A status indicator pill is overlaid at the top showing connection state.
+/// Document-framing corner guides are painted over the live feed.
 class HomeCameraPlaceholder extends StatelessWidget {
   const HomeCameraPlaceholder({super.key, required this.status});
 
@@ -10,20 +18,20 @@ class HomeCameraPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determine status color and text
     final (labelText, dotColor) = switch (status) {
       ReaderConnectionStatus.connected => ('CONNECTED', AppColors.success),
       ReaderConnectionStatus.connecting => ('CONNECTING', AppColors.orange),
-      ReaderConnectionStatus.disconnected => ('DISCONNECTED', AppColors.danger),
+      ReaderConnectionStatus.disconnected =>
+        ('DISCONNECTED', AppColors.danger),
       ReaderConnectionStatus.busy => ('PROCESSING...', AppColors.purpleMid),
     };
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF121218), // Dark camera background
-        borderRadius: BorderRadius.circular(20), // Rounded outer corners
+        color: const Color(0xFF121218), // dark fallback behind the stream
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.orange, // Orange border
+          color: AppColors.orange,
           width: 2.0,
         ),
       ),
@@ -31,29 +39,40 @@ class HomeCameraPlaceholder extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: Stack(
           children: [
-            // Orange document-positioning corner guides
+            // ── Live MJPEG camera feed ────────────────────────────────
+            Positioned.fill(
+              child: MjpegCameraView(
+                streamUrl: PiConfig.streamUrl,
+              ),
+            ),
+
+            // ── Document-positioning corner guides ────────────────────
             Positioned.fill(
               child: Padding(
                 padding: const EdgeInsets.all(28.0),
                 child: CustomPaint(
                   painter: CornerGuidesPainter(
-                    color: AppColors.orange,
+                    color: AppColors.orange.withValues(alpha: 0.85),
                     strokeWidth: 3.0,
                     length: 22.0,
                   ),
                 ),
               ),
             ),
-            // Connection indicator near the bottom
+
+            // ── Connection status pill ────────────────────────────────
             Positioned(
               top: 12,
               left: 0,
               right: 0,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.6), // Dark translucent pill/background
+                    color: Colors.black.withValues(alpha: 0.65),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Row(
@@ -82,6 +101,7 @@ class HomeCameraPlaceholder extends StatelessWidget {
   }
 }
 
+/// Paints L-shaped corner guides to help position a document under the camera.
 class CornerGuidesPainter extends CustomPainter {
   final Color color;
   final double strokeWidth;
@@ -104,19 +124,19 @@ class CornerGuidesPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Top-Left corner
+    // Top-Left
     canvas.drawLine(const Offset(0, 0), Offset(length, 0), paint);
     canvas.drawLine(const Offset(0, 0), Offset(0, length), paint);
 
-    // Top-Right corner
+    // Top-Right
     canvas.drawLine(Offset(w, 0), Offset(w - length, 0), paint);
     canvas.drawLine(Offset(w, 0), Offset(w, length), paint);
 
-    // Bottom-Left corner
+    // Bottom-Left
     canvas.drawLine(Offset(0, h), Offset(length, h), paint);
     canvas.drawLine(Offset(0, h), Offset(0, h - length), paint);
 
-    // Bottom-Right corner
+    // Bottom-Right
     canvas.drawLine(Offset(w, h), Offset(w - length, h), paint);
     canvas.drawLine(Offset(w, h), Offset(w, h - length), paint);
   }

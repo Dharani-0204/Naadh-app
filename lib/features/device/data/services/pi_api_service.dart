@@ -112,6 +112,23 @@ class PiApiService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
+  /// Full URL for the live MJPEG camera stream.
+  String get streamUrl => '${PiConfig.baseUrl}/camera/stream';
+
+  /// Checks if the Raspberry Pi is reachable with a 3-second timeout.
+  /// Returns true if the /status endpoint responds with HTTP 200.
+  Future<bool> checkHealth() async {
+    try {
+      final uri = Uri.parse('${PiConfig.baseUrl}/status');
+      final response = await _client
+          .get(uri)
+          .timeout(const Duration(seconds: 3));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   String getFullUrl(String? path) {
     if (path == null || path.isEmpty) {
       return '';

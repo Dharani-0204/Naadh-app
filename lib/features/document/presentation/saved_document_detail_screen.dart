@@ -1,0 +1,570 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_card.dart';
+import '../data/models/saved_document.dart';
+import '../data/services/document_share_service.dart';
+import '../data/services/document_storage_service.dart';
+
+/// Detail view for a locally saved [SavedDocument].
+///
+/// Works entirely offline — reads files from local storage.
+/// Provides view, TTS, save (re-save), share, and delete actions.
+class SavedDocumentDetailScreen extends StatefulWidget {
+  const SavedDocumentDetailScreen({super.key, required this.document});
+
+  final SavedDocument document;
+
+  @override
+  State<SavedDocumentDetailScreen> createState() =>
+      _SavedDocumentDetailScreenState();
+}
+
+class _SavedDocumentDetailScreenState
+    extends State<SavedDocumentDetailScreen> {
+  final _storage = DocumentStorageService();
+  final _share = DocumentShareService();
+  late final FlutterTts _tts;
+  String? _activeSection;
+
+  @override
+  void initState() {
+    super.initState();
+    _initTts();
+  }
+
+  Future<void> _initTts() async {
+    _tts = FlutterTts();
+    await _tts.setLanguage('en-US');
+    await _tts.setSpeechRate(0.45);
+    await _tts.setVolume(1.0);
+    _tts.setCompletionHandler(() {
+      if (mounted) setState(() => _activeSection = null);
+    });
+    _tts.setCancelHandler(() {
+      if (mounted) setState(() => _activeSection = null);
+    });
+    _tts.setErrorHandler((_) {
+      if (mounted) setState(() => _activeSection = null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tts.stop();
+    super.dispose();
+  }
+
+  // ─── TTS ──────────────────────────────────────────────────────────
+
+  Future<void> _toggleSpeak(String text, String section) async {
+    if (_activeSection == section) {
+      await _tts.stop();
+      setState(() => _activeSection = null);
+      return;
+    }
+    await _tts.stop();
+    setState(() => _activeSection = section);
+    await _tts.speak(text);
+  }
+
+  // ─── Share ────────────────────────────────────────────────────────
+
+  Future<void> _shareText(String text, String section) async {
+    try {
+      final msg = section == 'original'
+          ? DocumentShareService.buildOriginalTextMessage(text)
+          : DocumentShareService.buildSummaryMessage(text);
+      await _share.shareText(msg);
+    } catch (e) {
+      _snack('Share failed: $e', success: false);
+    }
+  }
+
+  Future<void> _shareFile(String? path, String description) async {
+    if (path == null || !File(path).existsSync()) {
+      _snack('$description not found on this device.', success: false);
+      return;
+    }
+    try {
+      await _share.shareFile(File(path));
+    } catch (e) {
+      _snack('Share failed: $e', success: false);
+    }
+  }
+
+  Future<void> _shareCompleteZip() async {
+    _snackLoading('Creating ZIP archive…');
+    try {
+      final zip = await _storage.createZip(widget.document);
+      await _share.shareFile(
+        zip,
+        subject: 'Alien Document Reader — ${widget.document.documentTitle}',
+      );
+    } catch (e) {
+      if (mounted) _snack('Share failed: $e', success: false);
+    }
+  }
+
+  // ─── Delete ───────────────────────────────────────────────────────
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Document?'),
+        content: Text(
+          'This will permanently delete "${widget.document.documentTitle}" '
+          'and all its files.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style:
+                FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await _storage.deleteDocument(widget.document.documentId);
+      if (!mounted) return;
+      _snack('Document deleted', success: true);
+      Navigator.of(context).pop(true); // signal refresh to caller
+    } catch (e) {
+      if (mounted) _snack('Delete failed: $e', success: false);
+    }
+  }
+
+  // ─── Snack helpers ────────────────────────────────────────────────
+
+  void _snack(String msg, {bool? success}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: success == true
+              ? Colors.green.shade700
+              : success == false
+                  ? Colors.red.shade700
+                  : null,
+        ),
+      );
+  }
+
+  void _snackLoading(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
+              ),
+              const SizedBox(width: 14),
+              Text(msg),
+            ],
+          ),
+          duration: const Duration(seconds: 60),
+        ),
+      );
+  }
+
+  // ─── Build ────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    final doc = widget.document;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          doc.documentTitle,
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          IconButton(
+            onPressed: _confirmDelete,
+            icon: const Icon(Icons.delete_outline),
+            color: Colors.red.shade400,
+            tooltip: 'Delete document',
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // ── Document info chip ─────────────────────────────────────
+          _MetaChip(date: doc.captureDate),
+          const SizedBox(height: AppSpacing.md),
+
+          // ── Captured image (local file) ────────────────────────────
+          if (doc.imagePath != null) ...[
+            _LocalImageCard(imagePath: doc.imagePath!),
+            const SizedBox(height: AppSpacing.md),
+          ],
+
+          // ── Extracted text ─────────────────────────────────────────
+          _SavedSectionCard(
+            title: 'Extracted Text',
+            icon: Icons.text_snippet_outlined,
+            iconColor: AppColors.purpleMid,
+            text: doc.originalText,
+            isReading: _activeSection == 'original',
+            onReadAloud: () => _toggleSpeak(doc.originalText, 'original'),
+            actions: [
+              _SectionAction(
+                icon: Icons.volume_up_outlined,
+                label: _activeSection == 'original' ? 'Stop' : 'Read',
+                onTap: () => _toggleSpeak(doc.originalText, 'original'),
+                active: _activeSection == 'original',
+              ),
+              _SectionAction(
+                icon: Icons.text_snippet_outlined,
+                label: 'Save TXT',
+                onTap: () async {
+                  _snackLoading('Saving…');
+                  try {
+                    final f = await _storage.saveOriginalTextAsTxt(
+                        doc.originalText,
+                        docId: doc.documentId);
+                    if (mounted) _snack('Saved: ${f.path.split('/').last}', success: true);
+                  } catch (e) {
+                    if (mounted) _snack('Failed: $e', success: false);
+                  }
+                },
+              ),
+              _SectionAction(
+                icon: Icons.picture_as_pdf_outlined,
+                label: 'Save PDF',
+                onTap: () async {
+                  _snackLoading('Generating PDF…');
+                  try {
+                    final f = await _storage.saveOriginalTextAsPdf(
+                      doc.originalText,
+                      documentTitle: doc.documentTitle,
+                      captureDate: doc.captureDate,
+                      docId: doc.documentId,
+                    );
+                    if (mounted) _snack('PDF saved: ${f.path.split('/').last}', success: true);
+                  } catch (e) {
+                    if (mounted) _snack('Failed: $e', success: false);
+                  }
+                },
+              ),
+              _SectionAction(
+                icon: Icons.share_outlined,
+                label: 'Share Text',
+                onTap: () => _shareText(doc.originalText, 'original'),
+              ),
+              _SectionAction(
+                icon: Icons.picture_as_pdf_outlined,
+                label: 'Share PDF',
+                onTap: () => _shareFile(doc.originalPdfPath, 'PDF'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // ── AI summary ─────────────────────────────────────────────
+          _SavedSectionCard(
+            title: 'AI Summary',
+            icon: Icons.auto_awesome_outlined,
+            iconColor: AppColors.orange,
+            text: doc.summaryText,
+            isReading: _activeSection == 'summary',
+            onReadAloud: () => _toggleSpeak(doc.summaryText, 'summary'),
+            actions: [
+              _SectionAction(
+                icon: Icons.volume_up_outlined,
+                label: _activeSection == 'summary' ? 'Stop' : 'Read',
+                onTap: () => _toggleSpeak(doc.summaryText, 'summary'),
+                active: _activeSection == 'summary',
+              ),
+              _SectionAction(
+                icon: Icons.text_snippet_outlined,
+                label: 'Save TXT',
+                onTap: () async {
+                  _snackLoading('Saving…');
+                  try {
+                    final f = await _storage.saveSummaryAsTxt(
+                        doc.summaryText,
+                        docId: doc.documentId);
+                    if (mounted) _snack('Saved: ${f.path.split('/').last}', success: true);
+                  } catch (e) {
+                    if (mounted) _snack('Failed: $e', success: false);
+                  }
+                },
+              ),
+              _SectionAction(
+                icon: Icons.picture_as_pdf_outlined,
+                label: 'Save PDF',
+                onTap: () async {
+                  _snackLoading('Generating PDF…');
+                  try {
+                    final f = await _storage.saveSummaryAsPdf(
+                      doc.summaryText,
+                      documentTitle: doc.documentTitle,
+                      captureDate: doc.captureDate,
+                      docId: doc.documentId,
+                    );
+                    if (mounted) _snack('PDF saved: ${f.path.split('/').last}', success: true);
+                  } catch (e) {
+                    if (mounted) _snack('Failed: $e', success: false);
+                  }
+                },
+              ),
+              _SectionAction(
+                icon: Icons.share_outlined,
+                label: 'Share Text',
+                onTap: () => _shareText(doc.summaryText, 'summary'),
+              ),
+              _SectionAction(
+                icon: Icons.picture_as_pdf_outlined,
+                label: 'Share PDF',
+                onTap: () => _shareFile(doc.summaryPdfPath, 'Summary PDF'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // ── Share complete document ────────────────────────────────
+          FilledButton.icon(
+            onPressed: _shareCompleteZip,
+            icon: const Icon(Icons.folder_zip_outlined),
+            label: const Text('Share Complete Document (ZIP)'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _confirmDelete,
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete Document'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red.shade600,
+              side: BorderSide(color: Colors.red.shade300),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Meta info chip
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({required this.date});
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) {
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final h = date.hour.toString().padLeft(2, '0');
+    final m = date.minute.toString().padLeft(2, '0');
+    final label =
+        '${date.day} ${months[date.month - 1]} ${date.year} · $h:$m';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.cloud,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.calendar_today_outlined,
+              size: 14, color: Colors.black45),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style:
+                const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Local image card (reads from device file system)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LocalImageCard extends StatelessWidget {
+  const _LocalImageCard({required this.imagePath});
+  final String imagePath;
+
+  @override
+  Widget build(BuildContext context) {
+    final file = File(imagePath);
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.document_scanner_outlined,
+                  size: 18, color: AppColors.purpleMid),
+              const SizedBox(width: 8),
+              Text('Captured Document',
+                  style: Theme.of(context).textTheme.titleMedium),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: file.existsSync()
+                ? Image.file(file, fit: BoxFit.contain, width: double.infinity)
+                : Container(
+                    height: 160,
+                    color: AppColors.cloud,
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.image_not_supported_outlined,
+                              size: 32, color: Colors.black38),
+                          SizedBox(height: 8),
+                          Text('Image file not found',
+                              style: TextStyle(
+                                  color: Colors.black54, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Section card for saved document (with action chips)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SavedSectionCard extends StatelessWidget {
+  const _SavedSectionCard({
+    required this.title,
+    required this.icon,
+    required this.iconColor,
+    required this.text,
+    required this.isReading,
+    required this.onReadAloud,
+    required this.actions,
+  });
+
+  final String title;
+  final IconData icon;
+  final Color iconColor;
+  final String text;
+  final bool isReading;
+  final VoidCallback onReadAloud;
+  final List<_SectionAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: iconColor),
+              const SizedBox(width: 8),
+              Text(title, style: Theme.of(context).textTheme.titleMedium),
+            ],
+          ),
+          const Divider(height: 16),
+          // Action chips in a horizontal scroll
+          SizedBox(
+            height: 38,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: actions.length,
+              separatorBuilder: (context, index) =>
+                  const SizedBox(width: 6),
+              itemBuilder: (context, index) {
+                final action = actions[index];
+                return ActionChip(
+                  avatar: Icon(
+                    action.icon,
+                    size: 15,
+                    color: action.active
+                        ? AppColors.orange
+                        : AppColors.purpleMid,
+                  ),
+                  label: Text(
+                    action.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: action.active ? AppColors.orange : null,
+                      fontWeight: action.active
+                          ? FontWeight.w700
+                          : FontWeight.normal,
+                    ),
+                  ),
+                  onPressed: action.onTap,
+                  backgroundColor: action.active
+                      ? AppColors.orange.withValues(alpha: 0.1)
+                      : null,
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Divider(height: 8),
+          const SizedBox(height: 6),
+          SelectableText(
+            text,
+            style:
+                Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.7),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action descriptor
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SectionAction {
+  const _SectionAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.active = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool active;
+}

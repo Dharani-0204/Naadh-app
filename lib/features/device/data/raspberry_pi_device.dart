@@ -98,6 +98,24 @@ class RaspberryPiDevice implements ReaderDevice {
     }
   }
 
+  /// Returns the full list of captures from the current session.
+  /// Each entry has: page_number (int) and image_url (String, full URL).
+  Future<List<Map<String, dynamic>>> getCaptureList() async {
+    try {
+      final data = await _apiService.getCaptures();
+      final raw = data['captures'] as List<dynamic>? ?? [];
+      return raw.map((c) {
+        final m = c as Map<String, dynamic>;
+        return {
+          'page_number': m['page_number'],
+          'image_url': _apiService.getFullUrl(m['image_url'] as String?),
+        };
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<Map<String, dynamic>?> getCaptureDetails(
     int pageNumber,
   ) async {

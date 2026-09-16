@@ -14,7 +14,7 @@ import '../features/session/data/session_storage.dart';
 import '../features/session/presentation/session_start_screen.dart';
 import '../shared/widgets/alien_header.dart';
 import '../shared/widgets/app_bottom_nav.dart';
-import '../shared/widgets/mock_audio_player.dart';
+import '../shared/models/document_output.dart';
 import 'router.dart';
 
 class AlienReaderApp extends StatelessWidget {
@@ -260,12 +260,60 @@ class _AppShellState extends State<AppShell> {
   Future<void> _process() async {
     if (!mounted) return;
 
+    // Read the last capture result stored by RaspberryPiDevice.capture().
+    // POST /capture returns: image_url, text, summary, original_audio_url,
+    // summary_audio_url — all pre-processed on the Pi (OCR + Gemini).
+    final capture = _device.lastCapture;
+
+    if (capture == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No pages captured yet. '
+            'Capture a document first.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Build real DocumentOutput from the Pi API response.
+    final imageRawUrl = capture['image_url'] as String?;
+    final originalText =
+        ((capture['text'] as String?) ?? '').trim();
+    final summaryText =
+        ((capture['summary'] as String?) ?? '').trim();
+    final originalAudioRaw =
+        capture['original_audio_url'] as String?;
+    final summaryAudioRaw =
+        capture['summary_audio_url'] as String?;
+
+    final output = DocumentOutput(
+      originalText: originalText.isNotEmpty
+          ? originalText
+          : 'No readable text was detected in this document.',
+      summaryText: summaryText.isNotEmpty
+          ? summaryText
+          : 'No AI summary could be generated.',
+      imageUrl: (imageRawUrl != null && imageRawUrl.isNotEmpty)
+          ? _device.getFullUrl(imageRawUrl)
+          : null,
+      originalAudioUrl:
+          (originalAudioRaw != null && originalAudioRaw.isNotEmpty)
+              ? _device.getFullUrl(originalAudioRaw)
+              : null,
+      summaryAudioUrl:
+          (summaryAudioRaw != null && summaryAudioRaw.isNotEmpty)
+              ? _device.getFullUrl(summaryAudioRaw)
+              : null,
+    );
+
     await Navigator.of(context).pushNamed(
       AppRoutes.processing,
       arguments: () async {
         await Navigator.of(context).pushReplacementNamed(
           AppRoutes.documentResults,
-          arguments: mockOutput,
+          arguments: output, // real data
         );
 
         if (mounted) {
@@ -323,8 +371,13 @@ class _AppShellState extends State<AppShell> {
             },
           ),
           const OutputScreen(),
-          const FilesScreen(),
-          const ProfileScreen(),
+          FilesScreen(device: _device),
+          ProfileScreen(
+                  userName: _userName,
+                  status: _status,
+                  pageCount: _pageCount,
+                  sessionActive: _sessionStarted,
+                ),
         ],
       ),
       bottomNavigationBar: AppBottomNav(

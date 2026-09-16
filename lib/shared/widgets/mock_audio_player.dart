@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../models/document_output.dart';
 import 'app_card.dart';
 
+/// A UI-only audio player widget (no real playback yet).
+/// Shown as a visual placeholder for audio output controls.
 class MockAudioPlayer extends StatelessWidget {
   const MockAudioPlayer({
     super.key,
@@ -65,16 +66,9 @@ class MockAudioPlayer extends StatelessWidget {
 }
 
 String _formatDuration(Duration duration) {
-  final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-  final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+  final minutes =
+      duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final seconds =
+      duration.inSeconds.remainder(60).toString().padLeft(2, '0');
   return '$minutes:$seconds';
 }
-
-const mockOutput = DocumentOutput(
-  originalText:
-      'The transition from classical to modern physics changed scientific understanding at a foundational level.',
-  summaryText:
-      'Modern physics introduced quantization and probability, replacing purely deterministic models.',
-  originalAudioDuration: Duration(minutes: 18, seconds: 42),
-  summaryAudioDuration: Duration(minutes: 4, seconds: 15),
-);
