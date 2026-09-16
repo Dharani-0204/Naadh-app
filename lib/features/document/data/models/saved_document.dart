@@ -11,6 +11,7 @@ class SavedDocument {
     required this.documentId,
     required this.documentTitle,
     required this.captureDate,
+    this.pageNumber,
     this.imagePath,
     this.originalTextPath,
     this.originalPdfPath,
@@ -20,11 +21,17 @@ class SavedDocument {
     this.summaryAudioPath,
     required this.originalText,
     required this.summaryText,
+    this.remoteImageUrl,
+    this.remoteOriginalAudioUrl,
+    this.remoteSummaryAudioUrl,
   });
 
   final String documentId;
   final String documentTitle;
   final DateTime captureDate;
+
+  /// Page number from Pi capture (if synced or captured during session).
+  final int? pageNumber;
 
   /// Local path to the JPEG captured image.
   final String? imagePath;
@@ -53,12 +60,22 @@ class SavedDocument {
   /// The full AI-generated summary (stored for quick preview).
   final String summaryText;
 
+  /// Remote URL on Pi server for image (if not saved locally).
+  final String? remoteImageUrl;
+
+  /// Remote URL on Pi server for original audio WAV file.
+  final String? remoteOriginalAudioUrl;
+
+  /// Remote URL on Pi server for summary audio WAV file.
+  final String? remoteSummaryAudioUrl;
+
   // ─── Serialization ────────────────────────────────────────────────
 
   Map<String, dynamic> toJson() => {
         'documentId': documentId,
         'documentTitle': documentTitle,
         'captureDate': captureDate.toIso8601String(),
+        'pageNumber': pageNumber,
         'imagePath': imagePath,
         'originalTextPath': originalTextPath,
         'originalPdfPath': originalPdfPath,
@@ -68,12 +85,16 @@ class SavedDocument {
         'summaryAudioPath': summaryAudioPath,
         'originalText': originalText,
         'summaryText': summaryText,
+        'remoteImageUrl': remoteImageUrl,
+        'remoteOriginalAudioUrl': remoteOriginalAudioUrl,
+        'remoteSummaryAudioUrl': remoteSummaryAudioUrl,
       };
 
   factory SavedDocument.fromJson(Map<String, dynamic> json) => SavedDocument(
         documentId: json['documentId'] as String,
         documentTitle: json['documentTitle'] as String,
         captureDate: DateTime.parse(json['captureDate'] as String),
+        pageNumber: json['pageNumber'] as int?,
         imagePath: json['imagePath'] as String?,
         originalTextPath: json['originalTextPath'] as String?,
         originalPdfPath: json['originalPdfPath'] as String?,
@@ -83,6 +104,9 @@ class SavedDocument {
         summaryAudioPath: json['summaryAudioPath'] as String?,
         originalText: json['originalText'] as String? ?? '',
         summaryText: json['summaryText'] as String? ?? '',
+        remoteImageUrl: json['remoteImageUrl'] as String?,
+        remoteOriginalAudioUrl: json['remoteOriginalAudioUrl'] as String?,
+        remoteSummaryAudioUrl: json['remoteSummaryAudioUrl'] as String?,
       );
 
   String toJsonString() => jsonEncode(toJson());

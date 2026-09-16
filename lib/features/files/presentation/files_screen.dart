@@ -116,6 +116,13 @@ class _FilesScreenState extends State<FilesScreen> {
   Future<void> _openSessionCapture(int pageNumber) async {
     if (widget.device == null) return;
 
+    // Check if capture is already locally saved
+    final existingDoc = await _storageService.findByPageNumber(pageNumber);
+    if (existingDoc != null && mounted) {
+      await _openSavedDoc(existingDoc);
+      return;
+    }
+
     if (!mounted) return;
     showDialog<void>(
       context: context,
@@ -149,23 +156,45 @@ class _FilesScreenState extends State<FilesScreen> {
         return;
       }
 
+      final imageRawUrl = details['image_url'] as String?;
+      final originalText = ((details['text'] as String?) ?? '').trim();
+      final summaryText = ((details['summary'] as String?) ?? '').trim();
+
       final output = DocumentOutput(
-        originalText: ((details['text'] as String?) ?? '').isNotEmpty
-            ? details['text'] as String
+        originalText: originalText.isNotEmpty
+            ? originalText
             : 'No text extracted.',
-        summaryText: ((details['summary'] as String?) ?? '').isNotEmpty
-            ? details['summary'] as String
+        summaryText: summaryText.isNotEmpty
+            ? summaryText
             : 'No summary available.',
-        imageUrl: widget.device!.getFullUrl(details['image_url'] as String?),
+        imageUrl: widget.device!.getFullUrl(imageRawUrl),
         originalAudioUrl:
             '${PiConfig.baseUrl}/capture/$pageNumber/audio/original',
         summaryAudioUrl:
             '${PiConfig.baseUrl}/capture/$pageNumber/audio/summary',
       );
 
+      // Auto-sync session capture to local storage
+      SavedDocument? savedDoc;
+      try {
+        savedDoc = await _storageService.saveCompleteDocument(
+          originalText: output.originalText,
+          summaryText: output.summaryText,
+          pageNumber: pageNumber,
+          imageUrl: output.imageUrl,
+          originalAudioUrl: output.originalAudioUrl,
+          summaryAudioUrl: output.summaryAudioUrl,
+        );
+      } catch (_) {}
+
+      if (!mounted) return;
+
       await Navigator.of(context).pushNamed(
         AppRoutes.documentResults,
-        arguments: output,
+        arguments: DocumentResultsArgs(
+          output: output,
+          savedDocument: savedDoc,
+        ),
       );
     } catch (e) {
       if (mounted) {

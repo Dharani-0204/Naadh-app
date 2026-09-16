@@ -2,88 +2,286 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_card.dart';
 
-class ProcessingScreen extends StatefulWidget {
-  const ProcessingScreen({super.key, required this.onCompleted});
+enum _PiStatus { capturing, queued, processing, ready, failed }
 
-  final VoidCallback onCompleted;
+class ProcessingScreen extends StatefulWidget {
+  const ProcessingScreen({
+    super.key,
+    this.onCompleted,
+    this.onProcess,
+    this.pageNumber = 1,
+    this.imageUrl,
+    this.statusStream,
+  });
+
+  final VoidCallback? onCompleted;
+  final Future<void> Function()? onProcess;
+  final int pageNumber;
+  final String? imageUrl;
+  final Stream<String>? statusStream;
 
   @override
   State<ProcessingScreen> createState() => _ProcessingScreenState();
 }
 
 class _ProcessingScreenState extends State<ProcessingScreen> {
-  static const states = <String>[
-    'Captured',
-    'Reading document',
-    'Extracting text',
-    'Generating summary',
-    'Generating audio',
-    'Ready',
-  ];
-
-  int currentStep = 0;
-  Timer? timer;
+  _PiStatus _piStatus = _PiStatus.capturing;
+  bool _isProcessing = true;
+  String? _error;
+  StreamSubscription<String>? _statusSub;
 
   @override
   void initState() {
     super.initState();
-    timer = Timer.periodic(const Duration(milliseconds: 900), (timer) {
-      if (currentStep >= states.length - 1) {
-        timer.cancel();
-        widget.onCompleted();
-        return;
+    _statusSub = widget.statusStream?.listen(_onPiStatus);
+    if (widget.onProcess != null) {
+      _executeRealProcess();
+    } else if (widget.onCompleted != null) {
+      widget.onCompleted!();
+    }
+  }
+
+  void _onPiStatus(String rawStatus) {
+    if (!mounted) return;
+    setState(() {
+      switch (rawStatus.toUpperCase()) {
+        case 'QUEUED':
+          _piStatus = _PiStatus.queued;
+          break;
+        case 'PROCESSING':
+          _piStatus = _PiStatus.processing;
+          break;
+        case 'READY':
+          _piStatus = _PiStatus.ready;
+          break;
+        case 'FAILED':
+          _piStatus = _PiStatus.failed;
+          break;
+        default:
+          break;
       }
-      setState(() => currentStep++);
     });
+  }
+
+  Future<void> _executeRealProcess() async {
+    setState(() {
+      _isProcessing = true;
+      _error = null;
+    });
+    try {
+      await widget.onProcess!();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _piStatus = _PiStatus.failed;
+          _error = e.toString();
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
-    timer?.cancel();
+    _statusSub?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Processing')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Processing document',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 10),
-                LinearProgressIndicator(
-                  value: (currentStep + 1) / states.length,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                ...states.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final text = entry.value;
-                  final done = index <= currentStep;
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      done ? Icons.check_circle : Icons.radio_button_unchecked,
-                      color: done ? Colors.green : Colors.black38,
+    return PopScope(
+      canPop: !_isProcessing,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Processing')),
+        body: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            AppCard(
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.purple.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    title: Text(text),
-                  );
-                }),
-              ],
+                    child: const Icon(
+                      Icons.document_scanner_outlined,
+                      color: AppColors.purple,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Captured Page ${widget.pageNumber}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _error != null ? 'Processing failed' : _statusSubtitle(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _error != null ? AppColors.danger : Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+
+            if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Captured Image', style: Theme.of(context).textTheme.labelMedium),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        widget.imageUrl!,
+                        fit: BoxFit.contain,
+                        width: double.infinity,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return const SizedBox(
+                            height: 160,
+                            child: Center(child: CircularProgressIndicator(color: AppColors.purple)),
+                          );
+                        },
+                        errorBuilder: (context, error, _) => const SizedBox(
+                          height: 80,
+                          child: Center(
+                            child: Icon(Icons.broken_image_outlined, color: Colors.black26, size: 40),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: AppSpacing.md),
+
+            if (_error != null) ...[
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.error_outline, color: AppColors.danger),
+                        SizedBox(width: 8),
+                        Text('Capture Error', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.danger)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(_error!, style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back),
+                        label: const Text('Return to Home'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Processing document...', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(
+                      value: _progressValue(),
+                      color: AppColors.purple,
+                      backgroundColor: AppColors.cloud,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    ..._buildSteps(),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
+  }
+
+  String _statusSubtitle() {
+    switch (_piStatus) {
+      case _PiStatus.capturing:
+        return 'Triggering camera on Raspberry Pi...';
+      case _PiStatus.queued:
+        return 'Captured — waiting in Pi processing queue...';
+      case _PiStatus.processing:
+        return 'Pi is running OCR + AI summary + audio...';
+      case _PiStatus.ready:
+        return 'Processing complete — saving to phone...';
+      case _PiStatus.failed:
+        return 'Processing failed';
+    }
+  }
+
+  double _progressValue() {
+    switch (_piStatus) {
+      case _PiStatus.capturing:
+        return 0.1;
+      case _PiStatus.queued:
+        return 0.25;
+      case _PiStatus.processing:
+        return 0.6;
+      case _PiStatus.ready:
+        return 0.9;
+      case _PiStatus.failed:
+        return 0.0;
+    }
+  }
+
+  List<Widget> _buildSteps() {
+    final steps = <(String, int)>[
+      ('Camera triggered', _PiStatus.queued.index),
+      ('Image captured', _PiStatus.processing.index),
+      ('OCR text extracted', _PiStatus.ready.index),
+      ('AI summary generated', _PiStatus.ready.index),
+      ('Audio files generated', _PiStatus.ready.index),
+    ];
+    return steps.map((step) {
+      final done = _piStatus.index >= step.$2;
+      return ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: SizedBox(
+          width: 18,
+          height: 18,
+          child: done
+              ? const Icon(Icons.check_circle, color: Colors.green, size: 18)
+              : const CircularProgressIndicator(strokeWidth: 2, color: AppColors.purpleMid),
+        ),
+        title: Text(
+          step.$1,
+          style: TextStyle(fontSize: 14, color: done ? Colors.black87 : Colors.black54),
+        ),
+      );
+    }).toList();
   }
 }

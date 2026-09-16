@@ -43,6 +43,8 @@ class HomeCameraPlaceholder extends StatelessWidget {
             Positioned.fill(
               child: MjpegCameraView(
                 streamUrl: PiConfig.streamUrl,
+                active: status == ReaderConnectionStatus.connected ||
+                    status == ReaderConnectionStatus.busy,
               ),
             ),
 

@@ -13,7 +13,7 @@ class SessionStorage {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setString(_userNameKey, userName);
-    await prefs.setBool(_connectedKey, connected);
+    await prefs.setBool(_connectedKey, false); // Never persist connected as true across restarts
     await prefs.setInt(_pageCountKey, pageCount);
   }
 
@@ -23,8 +23,7 @@ class SessionStorage {
   }
 
   Future<bool> isConnected() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_connectedKey) ?? false;
+    return false; // Connection status must be established fresh on each app launch
   }
 
   Future<int> getPageCount() async {

@@ -280,6 +280,12 @@ class _SavedDocumentDetailScreenState
                 label: 'Share PDF',
                 onTap: () => _shareFile(doc.originalPdfPath, 'PDF'),
               ),
+              if (doc.originalAudioPath != null)
+                _SectionAction(
+                  icon: Icons.audio_file_outlined,
+                  label: 'Share Audio',
+                  onTap: () => _shareFile(doc.originalAudioPath, 'Original Audio'),
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -342,6 +348,12 @@ class _SavedDocumentDetailScreenState
                 label: 'Share PDF',
                 onTap: () => _shareFile(doc.summaryPdfPath, 'Summary PDF'),
               ),
+              if (doc.summaryAudioPath != null)
+                _SectionAction(
+                  icon: Icons.audio_file_outlined,
+                  label: 'Share Audio',
+                  onTap: () => _shareFile(doc.summaryAudioPath, 'Summary Audio'),
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),

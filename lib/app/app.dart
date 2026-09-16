@@ -6,15 +6,17 @@ import '../core/constants/app_strings.dart';
 import '../core/theme/app_theme.dart';
 import '../features/device/data/raspberry_pi_device.dart';
 import '../features/device/domain/reader_device.dart';
+import '../features/document/data/models/saved_document.dart';
+import '../features/document/data/services/document_storage_service.dart';
 import '../features/files/presentation/files_screen.dart';
 import '../features/home/presentation/home_screen.dart';
 import '../features/output/presentation/output_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/session/data/session_storage.dart';
 import '../features/session/presentation/session_start_screen.dart';
+import '../shared/models/document_output.dart';
 import '../shared/widgets/alien_header.dart';
 import '../shared/widgets/app_bottom_nav.dart';
-import '../shared/models/document_output.dart';
 import 'router.dart';
 
 class AlienReaderApp extends StatelessWidget {
@@ -42,11 +44,11 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   final RaspberryPiDevice _device = RaspberryPiDevice();
   final SessionStorage _sessionStorage = SessionStorage();
+  final DocumentStorageService _storageService = DocumentStorageService();
 
   late final StreamSubscription<ReaderConnectionStatus> _statusSub;
 
-  ReaderConnectionStatus _status =
-      ReaderConnectionStatus.disconnected;
+  ReaderConnectionStatus _status = ReaderConnectionStatus.disconnected;
 
   MainTab _tab = MainTab.home;
 
@@ -58,6 +60,7 @@ class _AppShellState extends State<AppShell> {
   bool _isConnecting = false;
 
   String? _userName;
+  String? _ocrFailureMessage;
 
   @override
   void initState() {
@@ -76,7 +79,6 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _loadSavedSession() async {
     final userName = await _sessionStorage.getUserName();
-    final connected = await _sessionStorage.isConnected();
     final pageCount = await _sessionStorage.getPageCount();
 
     if (!mounted) return;
@@ -85,11 +87,11 @@ class _AppShellState extends State<AppShell> {
       _userName = userName;
       _pageCount = pageCount;
 
-      if (userName != null && userName.isNotEmpty && connected) {
+      if (userName != null && userName.isNotEmpty) {
         _sessionStarted = true;
-        _status = ReaderConnectionStatus.connected;
       }
 
+      _status = ReaderConnectionStatus.disconnected;
       _isLoadingSession = false;
     });
   }
@@ -140,6 +142,7 @@ class _AppShellState extends State<AppShell> {
       setState(() {
         _status = ReaderConnectionStatus.connected;
         _sessionStarted = true;
+        _ocrFailureMessage = null;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -173,7 +176,8 @@ class _AppShellState extends State<AppShell> {
   Future<void> _capture() async {
     if (_isCapturing) return;
 
-    if (_status != ReaderConnectionStatus.connected) {
+    if (_status != ReaderConnectionStatus.connected &&
+        _status != ReaderConnectionStatus.busy) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please connect to the Raspberry Pi first'),
@@ -185,57 +189,177 @@ class _AppShellState extends State<AppShell> {
     setState(() {
       _isCapturing = true;
       _status = ReaderConnectionStatus.busy;
+      _ocrFailureMessage = null;
     });
 
+    final targetPageNumber = _pageCount + 1;
+    final navigator = Navigator.of(context);
+
+    // StreamController that feeds live Pi status strings into ProcessingScreen.
+    final statusCtrl = StreamController<String>.broadcast();
+
+    // Step 1: Trigger the Pi capture immediately (returns page info + image_url).
+    // If this fails, abort before navigating.
+    Map<String, dynamic> triggerResult;
     try {
-      await _device.capture();
-
-      if (!mounted) return;
-
-      final newPageCount = _pageCount + 1;
-
+      triggerResult = await _device.triggerCaptureAsync();
+    } catch (e) {
       setState(() {
-        _pageCount = newPageCount;
+        _isCapturing = false;
         _status = ReaderConnectionStatus.connected;
       });
+      await statusCtrl.close();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Capture failed: $e')),
+        );
+      }
+      return;
+    }
 
-      await _sessionStorage.savePageCount(newPageCount);
+    final pageNumber = (triggerResult['page_number'] as int?) ?? targetPageNumber;
+    final imageRelUrl = triggerResult['image_url'] as String?;
+    final fullImageUrl = (imageRelUrl != null && imageRelUrl.isNotEmpty)
+        ? _device.getFullUrl(imageRelUrl)
+        : null;
 
-      if (!mounted) return;
+    // Step 2: Navigate immediately to ProcessingScreen with image + status stream.
+    await navigator.pushNamed(
+      AppRoutes.processing,
+      arguments: ProcessingArgs(
+        pageNumber: pageNumber,
+        imageUrl: fullImageUrl,
+        statusStream: statusCtrl.stream,
+        onProcess: () async {
+          try {
+            // Step 3: Poll Pi until READY (OCR + summary + audio done).
+            final captureData = await _device.pollPageUntilReady(
+              pageNumber,
+              onStatusUpdate: (status) {
+                if (!statusCtrl.isClosed) {
+                  statusCtrl.add(status);
+                }
+              },
+            );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Page $_pageCount captured and processed successfully',
-          ),
-        ),
+            if (!mounted) return;
+
+            // Update page count and persist.
+            setState(() {
+              _pageCount = pageNumber;
+              _status = ReaderConnectionStatus.connected;
+            });
+            await _sessionStorage.savePageCount(pageNumber);
+
+            // Step 4: Build full URLs and navigate to Output.
+            await _saveAndNavigateToResults(captureData, pageNumber);
+          } on OcrFailureException catch (e) {
+            if (mounted) {
+              setState(() {
+                _ocrFailureMessage = e.message;
+                _status = ReaderConnectionStatus.connected;
+              });
+            }
+            rethrow;
+          } catch (e) {
+            if (mounted) {
+              setState(() {
+                _status = ReaderConnectionStatus.connected;
+              });
+            }
+            rethrow;
+          } finally {
+            if (mounted) {
+              setState(() {
+                _isCapturing = false;
+              });
+            }
+            await statusCtrl.close();
+          }
+        },
+      ),
+    );
+
+    // Ensure cleanup if user backed out of the processing screen.
+    if (!statusCtrl.isClosed) {
+      await statusCtrl.close();
+    }
+    if (mounted) {
+      setState(() {
+        _isCapturing = false;
+        if (_status == ReaderConnectionStatus.busy) {
+          _status = ReaderConnectionStatus.connected;
+        }
+      });
+    }
+  }
+
+  Future<void> _saveAndNavigateToResults(
+    Map<String, dynamic> capture,
+    int pageNumber,
+  ) async {
+    final imageRawUrl = capture['image_url'] as String?;
+    final originalText = ((capture['text'] as String?) ?? '').trim();
+    final summaryText = ((capture['summary'] as String?) ?? '').trim();
+    final originalAudioRaw = capture['original_audio_url'] as String?;
+    final summaryAudioRaw = capture['summary_audio_url'] as String?;
+
+    final fullImageUrl = (imageRawUrl != null && imageRawUrl.isNotEmpty)
+        ? _device.getFullUrl(imageRawUrl)
+        : null;
+    final fullOriginalAudioUrl =
+        (originalAudioRaw != null && originalAudioRaw.isNotEmpty)
+            ? _device.getFullUrl(originalAudioRaw)
+            : null;
+    final fullSummaryAudioUrl =
+        (summaryAudioRaw != null && summaryAudioRaw.isNotEmpty)
+            ? _device.getFullUrl(summaryAudioRaw)
+            : null;
+
+    final output = DocumentOutput(
+      originalText: originalText.isNotEmpty
+          ? originalText
+          : 'No readable text was detected in this document.',
+      summaryText: summaryText.isNotEmpty
+          ? summaryText
+          : 'No AI summary could be generated.',
+      imageUrl: fullImageUrl,
+      originalAudioUrl: fullOriginalAudioUrl,
+      summaryAudioUrl: fullSummaryAudioUrl,
+    );
+
+    // Auto-save captured document locally to persistent phone storage
+    SavedDocument? savedDoc;
+    try {
+      savedDoc = await _storageService.saveCompleteDocument(
+        originalText: output.originalText,
+        summaryText: output.summaryText,
+        pageNumber: pageNumber,
+        imageUrl: output.imageUrl,
+        originalAudioUrl: output.originalAudioUrl,
+        summaryAudioUrl: output.summaryAudioUrl,
       );
     } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _status = ReaderConnectionStatus.connected;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Capture failed: $e'),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCapturing = false;
-        });
-      }
+      debugPrint('[AppShell] Auto-save document failed: $e');
     }
+
+    if (!mounted) return;
+
+    // Replace Processing screen with DocumentResults (Output page)
+    await Navigator.of(context).pushReplacementNamed(
+      AppRoutes.documentResults,
+      arguments: DocumentResultsArgs(
+        output: output,
+        savedDocument: savedDoc,
+      ),
+    );
   }
 
   Future<void> _disconnect() async {
     try {
       await _device.endSession();
     } catch (_) {
-      // Even if the request fails, clear the local session.
+      // Clear session locally even if disconnect request errors.
     }
 
     await _sessionStorage.clearSession();
@@ -248,6 +372,7 @@ class _AppShellState extends State<AppShell> {
       _pageCount = 0;
       _status = ReaderConnectionStatus.disconnected;
       _tab = MainTab.home;
+      _ocrFailureMessage = null;
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -260,9 +385,6 @@ class _AppShellState extends State<AppShell> {
   Future<void> _process() async {
     if (!mounted) return;
 
-    // Read the last capture result stored by RaspberryPiDevice.capture().
-    // POST /capture returns: image_url, text, summary, original_audio_url,
-    // summary_audio_url — all pre-processed on the Pi (OCR + Gemini).
     final capture = _device.lastCapture;
 
     if (capture == null) {
@@ -277,54 +399,7 @@ class _AppShellState extends State<AppShell> {
       return;
     }
 
-    // Build real DocumentOutput from the Pi API response.
-    final imageRawUrl = capture['image_url'] as String?;
-    final originalText =
-        ((capture['text'] as String?) ?? '').trim();
-    final summaryText =
-        ((capture['summary'] as String?) ?? '').trim();
-    final originalAudioRaw =
-        capture['original_audio_url'] as String?;
-    final summaryAudioRaw =
-        capture['summary_audio_url'] as String?;
-
-    final output = DocumentOutput(
-      originalText: originalText.isNotEmpty
-          ? originalText
-          : 'No readable text was detected in this document.',
-      summaryText: summaryText.isNotEmpty
-          ? summaryText
-          : 'No AI summary could be generated.',
-      imageUrl: (imageRawUrl != null && imageRawUrl.isNotEmpty)
-          ? _device.getFullUrl(imageRawUrl)
-          : null,
-      originalAudioUrl:
-          (originalAudioRaw != null && originalAudioRaw.isNotEmpty)
-              ? _device.getFullUrl(originalAudioRaw)
-              : null,
-      summaryAudioUrl:
-          (summaryAudioRaw != null && summaryAudioRaw.isNotEmpty)
-              ? _device.getFullUrl(summaryAudioRaw)
-              : null,
-    );
-
-    await Navigator.of(context).pushNamed(
-      AppRoutes.processing,
-      arguments: () async {
-        await Navigator.of(context).pushReplacementNamed(
-          AppRoutes.documentResults,
-          arguments: output, // real data
-        );
-
-        if (mounted) {
-          setState(() {
-            _pageCount = 0;
-          });
-
-          await _sessionStorage.savePageCount(0);
-        }
-      },
-    );
+    await _saveAndNavigateToResults(capture, _pageCount);
   }
 
   @override
@@ -358,6 +433,7 @@ class _AppShellState extends State<AppShell> {
             onCapture: _capture,
             onFinish: _process,
             pageCount: _pageCount,
+            ocrFailureMessage: _ocrFailureMessage,
             onDeletePage: () async {
               if (_pageCount <= 0) return;
 
@@ -373,11 +449,12 @@ class _AppShellState extends State<AppShell> {
           const OutputScreen(),
           FilesScreen(device: _device),
           ProfileScreen(
-                  userName: _userName,
-                  status: _status,
-                  pageCount: _pageCount,
-                  sessionActive: _sessionStarted,
-                ),
+            userName: _userName,
+            status: _status,
+            pageCount: _pageCount,
+            sessionActive: _sessionStarted,
+            onDisconnect: _disconnect,
+          ),
         ],
       ),
       bottomNavigationBar: AppBottomNav(
@@ -412,12 +489,14 @@ class _AppShellState extends State<AppShell> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _status == ReaderConnectionStatus.connected
+                  _status == ReaderConnectionStatus.connected ||
+                          _status == ReaderConnectionStatus.busy
                       ? 'Connected'
                       : 'Disconnected',
                   style: TextStyle(
                     fontSize: 16,
-                    color: _status == ReaderConnectionStatus.connected
+                    color: _status == ReaderConnectionStatus.connected ||
+                            _status == ReaderConnectionStatus.busy
                         ? Colors.green
                         : Colors.red,
                   ),

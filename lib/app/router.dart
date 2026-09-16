@@ -14,6 +14,30 @@ abstract final class AppRoutes {
   static const savedDocumentDetail = '/saved-document-detail';
 }
 
+class DocumentResultsArgs {
+  final DocumentOutput output;
+  final SavedDocument? savedDocument;
+
+  const DocumentResultsArgs({
+    required this.output,
+    this.savedDocument,
+  });
+}
+
+class ProcessingArgs {
+  final Future<void> Function() onProcess;
+  final int pageNumber;
+  final String? imageUrl;
+  final Stream<String>? statusStream;
+
+  const ProcessingArgs({
+    required this.onProcess,
+    this.pageNumber = 1,
+    this.imageUrl,
+    this.statusStream,
+  });
+}
+
 abstract final class AppRouter {
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -24,6 +48,25 @@ abstract final class AppRouter {
         );
 
       case AppRoutes.processing:
+        if (settings.arguments is ProcessingArgs) {
+          final args = settings.arguments as ProcessingArgs;
+          return MaterialPageRoute<void>(
+            builder: (_) => ProcessingScreen(
+              onProcess: args.onProcess,
+              pageNumber: args.pageNumber,
+              imageUrl: args.imageUrl,
+              statusStream: args.statusStream,
+            ),
+            settings: settings,
+          );
+        }
+        if (settings.arguments is Future<void> Function()) {
+          final onProcess = settings.arguments as Future<void> Function();
+          return MaterialPageRoute<void>(
+            builder: (_) => ProcessingScreen(onProcess: onProcess),
+            settings: settings,
+          );
+        }
         final callback = settings.arguments as VoidCallback;
         return MaterialPageRoute<void>(
           builder: (_) => ProcessingScreen(onCompleted: callback),
@@ -31,6 +74,16 @@ abstract final class AppRouter {
         );
 
       case AppRoutes.documentResults:
+        if (settings.arguments is DocumentResultsArgs) {
+          final args = settings.arguments as DocumentResultsArgs;
+          return MaterialPageRoute<void>(
+            builder: (_) => DocumentResultsScreen(
+              output: args.output,
+              savedDocument: args.savedDocument,
+            ),
+            settings: settings,
+          );
+        }
         final output = settings.arguments as DocumentOutput;
         return MaterialPageRoute<void>(
           builder: (_) => DocumentResultsScreen(output: output),

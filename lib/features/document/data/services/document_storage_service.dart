@@ -54,6 +54,7 @@ class DocumentStorageService {
   Future<SavedDocument> saveCompleteDocument({
     required String originalText,
     required String summaryText,
+    int? pageNumber,
     String? imageUrl,
     String? originalAudioUrl,
     String? summaryAudioUrl,
@@ -62,16 +63,17 @@ class DocumentStorageService {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     final dir = await _docDir(id);
     final now = DateTime.now();
-    final title = documentTitle ?? 'Scan ${_shortDate(now)}';
+    final title = documentTitle ??
+        (pageNumber != null ? 'Scan Page $pageNumber' : 'Scan ${_shortDate(now)}');
 
     // ── Download captured image ───────────────────────────────────
     String? imagePath;
-    if (imageUrl != null) {
+    if (imageUrl != null && imageUrl.isNotEmpty) {
       imagePath = '${dir.path}/captured_image.jpg';
       try {
         await _downloadFile(imageUrl, imagePath);
       } catch (e) {
-        imagePath = null; // tolerate failure
+        imagePath = null; // tolerate failure, will fallback to remote URL
       }
     }
 
@@ -101,7 +103,7 @@ class DocumentStorageService {
 
     // ── Download audio files (best-effort) ────────────────────────
     String? originalAudioPath;
-    if (originalAudioUrl != null) {
+    if (originalAudioUrl != null && originalAudioUrl.isNotEmpty) {
       originalAudioPath = '${dir.path}/original_audio.wav';
       try {
         await _downloadFile(originalAudioUrl, originalAudioPath);
@@ -111,7 +113,7 @@ class DocumentStorageService {
     }
 
     String? summaryAudioPath;
-    if (summaryAudioUrl != null) {
+    if (summaryAudioUrl != null && summaryAudioUrl.isNotEmpty) {
       summaryAudioPath = '${dir.path}/summary_audio.wav';
       try {
         await _downloadFile(summaryAudioUrl, summaryAudioPath);
@@ -125,6 +127,7 @@ class DocumentStorageService {
       documentId: id,
       documentTitle: title,
       captureDate: now,
+      pageNumber: pageNumber,
       imagePath: imagePath,
       originalTextPath: originalTxtPath,
       originalPdfPath: originalPdfPath,
@@ -134,10 +137,22 @@ class DocumentStorageService {
       summaryAudioPath: summaryAudioPath,
       originalText: originalText,
       summaryText: summaryText,
+      remoteImageUrl: imageUrl,
+      remoteOriginalAudioUrl: originalAudioUrl,
+      remoteSummaryAudioUrl: summaryAudioUrl,
     );
 
     await _persistDocument(doc);
     return doc;
+  }
+
+  /// Finds a locally saved document by pageNumber if it exists.
+  Future<SavedDocument?> findByPageNumber(int pageNumber) async {
+    final docs = await loadAllDocuments();
+    for (final doc in docs) {
+      if (doc.pageNumber == pageNumber) return doc;
+    }
+    return null;
   }
 
   // ─── On-demand single-section saves ──────────────────────────────

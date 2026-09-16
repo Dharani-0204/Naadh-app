@@ -18,11 +18,18 @@ class MjpegCameraView extends StatefulWidget {
   const MjpegCameraView({
     super.key,
     required this.streamUrl,
+    this.active = true,
   });
 
   /// Full URL of the MJPEG endpoint, e.g.
   /// `http://192.168.0.134:8000/camera/stream`
   final String streamUrl;
+
+  /// Whether the camera stream should actively fetch frames.
+  final bool active;
+
+  /// Compile-time toggle for preview rotation (90 deg CCW = 3 quarter turns)
+  static const bool _kRotatePreview = true;
 
   @override
   State<MjpegCameraView> createState() => _MjpegCameraViewState();
@@ -31,7 +38,7 @@ class MjpegCameraView extends StatefulWidget {
 class _MjpegCameraViewState extends State<MjpegCameraView> {
   Uint8List? _currentFrame;
   String? _error;
-  bool _connecting = true;
+  bool _connecting = false;
 
   http.Client? _httpClient;
   StreamSubscription<List<int>>? _streamSub;
@@ -44,7 +51,28 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
   @override
   void initState() {
     super.initState();
-    _connect();
+    if (widget.active) {
+      _connect();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant MjpegCameraView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active != oldWidget.active || widget.streamUrl != oldWidget.streamUrl) {
+      if (widget.active) {
+        _connect();
+      } else {
+        _tearDown();
+        if (mounted) {
+          setState(() {
+            _currentFrame = null;
+            _connecting = false;
+            _error = null;
+          });
+        }
+      }
+    }
   }
 
   @override
@@ -65,7 +93,7 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
     _tearDown();
     _buffer.clear();
 
-    if (!mounted) return;
+    if (!mounted || !widget.active) return;
     setState(() {
       _connecting = true;
       _error = null;
@@ -79,7 +107,7 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
           .send(request)
           .timeout(const Duration(seconds: 10));
 
-      if (!mounted) return;
+      if (!mounted || !widget.active) return;
 
       if (response.statusCode != 200) {
         setState(() {
@@ -94,12 +122,13 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
 
       _streamSub = response.stream.listen(
         (chunk) {
+          if (!widget.active) return;
           _buffer.addAll(chunk);
           _extractFrames();
         },
         onError: (Object e) {
           debugPrint('[MjpegCameraView] Stream error: $e');
-          if (mounted) {
+          if (mounted && widget.active) {
             setState(() => _error = 'Stream error. Reconnecting...');
             Future<void>.delayed(
               const Duration(seconds: 2),
@@ -109,7 +138,7 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
         },
         onDone: () {
           debugPrint('[MjpegCameraView] Stream ended.');
-          if (mounted) {
+          if (mounted && widget.active) {
             setState(() => _error = 'Stream disconnected. Reconnecting...');
             Future<void>.delayed(
               const Duration(seconds: 2),
@@ -120,7 +149,7 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
         cancelOnError: true,
       );
     } on TimeoutException {
-      if (mounted) {
+      if (mounted && widget.active) {
         setState(() {
           _connecting = false;
           _error = 'Connection timed out.\nIs the Raspberry Pi reachable?';
@@ -128,7 +157,7 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
       }
     } catch (e) {
       debugPrint('[MjpegCameraView] Connection error: $e');
-      if (mounted) {
+      if (mounted && widget.active) {
         setState(() {
           _connecting = false;
           _error = 'Cannot reach camera.\nCheck Pi IP and network connection.';
@@ -171,7 +200,7 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
       final frame = Uint8List.fromList(_buffer.sublist(0, frameEnd));
       _buffer.removeRange(0, frameEnd);
 
-      if (mounted) {
+      if (mounted && widget.active) {
         setState(() => _currentFrame = frame);
       }
       // Loop to check if another complete frame is already in the buffer
@@ -189,6 +218,10 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.active) {
+      return const SizedBox.shrink();
+    }
+
     if (_connecting) {
       return const Center(
         child: Column(
@@ -284,7 +317,7 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
       );
     }
 
-    return Image.memory(
+    final frameWidget = Image.memory(
       _currentFrame!,
       fit: BoxFit.cover,
       gaplessPlayback: true, // prevents black flash between frames
@@ -296,5 +329,14 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
         ),
       ),
     );
+
+    if (MjpegCameraView._kRotatePreview) {
+      return RotatedBox(
+        quarterTurns: 3,
+        child: frameWidget,
+      );
+    }
+
+    return frameWidget;
   }
 }

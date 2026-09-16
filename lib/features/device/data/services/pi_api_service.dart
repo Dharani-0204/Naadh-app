@@ -62,12 +62,52 @@ class PiApiService {
             'Accept': 'application/json',
           },
         )
-        .timeout(const Duration(seconds: 60));
+        .timeout(const Duration(seconds: 30));
 
     if (response.statusCode != 200) {
       throw Exception(
         'Failed to capture image: '
         '${response.statusCode} ${response.body}',
+      );
+    }
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// POST /capture — triggers camera capture and returns immediately.
+  /// Response includes: page_number, status ("PROCESSING"), image_url.
+  /// The Pi continues OCR + summary + audio generation asynchronously.
+  Future<Map<String, dynamic>> triggerCapture() async {
+    final uri = Uri.parse('${PiConfig.baseUrl}/capture');
+
+    final response = await _client
+        .post(
+          uri,
+          headers: {'Accept': 'application/json'},
+        )
+        .timeout(const Duration(seconds: 30));
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Capture trigger failed: ${response.statusCode} ${response.body}',
+      );
+    }
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// GET /capture/{pageNumber} — polls the processing state for a single page.
+  /// Status values: QUEUED | PROCESSING | READY | FAILED
+  Future<Map<String, dynamic>> getCaptureStatus(int pageNumber) async {
+    final uri = Uri.parse('${PiConfig.baseUrl}/capture/$pageNumber');
+
+    final response = await _client
+        .get(uri)
+        .timeout(PiConfig.connectionTimeout);
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to get capture status: ${response.statusCode} ${response.body}',
       );
     }
 
@@ -147,6 +187,17 @@ class PiApiService {
     await _client
         .post(uri)
         .timeout(PiConfig.connectionTimeout);
+  }
+
+  /// Downloads raw byte content from full URL or relative path on Pi server.
+  Future<List<int>> downloadBytes(String path) async {
+    final fullUrl = getFullUrl(path);
+    final uri = Uri.parse(fullUrl);
+    final response = await _client.get(uri).timeout(const Duration(seconds: 30));
+    if (response.statusCode != 200) {
+      throw Exception('Failed to download file from $fullUrl: ${response.statusCode}');
+    }
+    return response.bodyBytes;
   }
 
   void dispose() {

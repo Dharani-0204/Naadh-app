@@ -24,6 +24,7 @@ class ProfileScreen extends StatefulWidget {
     this.status = ReaderConnectionStatus.disconnected,
     this.pageCount = 0,
     this.sessionActive = false,
+    this.onDisconnect,
   });
 
   /// The display name entered by the user at session start.
@@ -37,6 +38,9 @@ class ProfileScreen extends StatefulWidget {
 
   /// Whether a Pi session is currently active.
   final bool sessionActive;
+
+  /// Callback to end the Pi session and disconnect.
+  final VoidCallback? onDisconnect;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -257,6 +261,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+          if (widget.onDisconnect != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: widget.onDisconnect,
+                icon: const Icon(Icons.link_off),
+                label: const Text('DISCONNECT FROM DEVICE'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red.shade600,
+                  side: BorderSide(color: Colors.red.shade300),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
 
           // ── Pull to refresh hint ───────────────────────────────────

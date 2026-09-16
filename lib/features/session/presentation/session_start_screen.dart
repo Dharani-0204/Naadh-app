@@ -44,13 +44,15 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.document_scanner_outlined,
-                  size: 72,
+                Image.asset(
+                  'assets/images/alien_innovations_logo.png',
+                  width: 96,
+                  height: 96,
+                  fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Welcome to Alien Reader',
+                  'Welcome to Document Reader',
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,

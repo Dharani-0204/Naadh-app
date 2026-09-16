@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -18,9 +20,14 @@ import '../data/services/document_storage_service.dart';
 /// - AI summary — with Read Aloud, Save, Share
 /// - Save Complete Document button (downloads everything locally)
 class DocumentResultsScreen extends StatefulWidget {
-  const DocumentResultsScreen({super.key, required this.output});
+  const DocumentResultsScreen({
+    super.key,
+    required this.output,
+    this.savedDocument,
+  });
 
   final DocumentOutput output;
+  final SavedDocument? savedDocument;
 
   @override
   State<DocumentResultsScreen> createState() => _DocumentResultsScreenState();
@@ -44,6 +51,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
   @override
   void initState() {
     super.initState();
+    _savedDocument = widget.savedDocument;
     _initTts();
   }
 
@@ -223,7 +231,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
                 title: const Text('Share Audio'),
                 onTap: () {
                   Navigator.pop(ctx);
-                  _shareAudio(audioUrl);
+                  _shareAudio(audioUrl, section);
                 },
               ),
             const SizedBox(height: 8),
@@ -268,18 +276,31 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
     }
   }
 
-  Future<void> _shareAudio(String audioUrl) async {
-    _snackLoading('Downloading audio…');
+  Future<void> _shareAudio(String audioUrl, String section) async {
+    _snackLoading('Preparing audio for share…');
     try {
-      // Download to temp then share
-      final doc = await _storage.saveCompleteDocument(
-        originalText: '',
-        summaryText: '',
-        originalAudioUrl: audioUrl,
-      );
-      final audioPath = doc.originalAudioPath;
-      if (audioPath == null) throw Exception('Audio not available');
-      await _share.shareFile(File(audioPath), subject: 'Alien Document Reader');
+      // 1. If saved document exists and local audio file exists, share directly
+      if (_savedDocument != null) {
+        final localPath = section == 'original'
+            ? _savedDocument!.originalAudioPath
+            : _savedDocument!.summaryAudioPath;
+        if (localPath != null && File(localPath).existsSync()) {
+          await _share.shareFile(File(localPath), subject: 'Alien Document Reader Audio');
+          return;
+        }
+      }
+
+      // 2. Download to temporary file without creating a SavedDocument
+      final uri = Uri.parse(audioUrl);
+      final response = await http.get(uri).timeout(const Duration(seconds: 30));
+      if (response.statusCode != 200) {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+      final tmpDir = await getTemporaryDirectory();
+      final tempFile = File('${tmpDir.path}/${section}_audio_${DateTime.now().millisecondsSinceEpoch}.wav');
+      await tempFile.writeAsBytes(response.bodyBytes);
+
+      await _share.shareFile(tempFile, subject: 'Alien Document Reader Audio');
     } catch (e) {
       if (mounted) _snack('Audio share failed: $e', success: false);
     }
@@ -406,9 +427,11 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // ── Captured document image ───────────────────────────────
-          if (widget.output.imageUrl != null) ...[
-            _CapturedImageCard(imageUrl: widget.output.imageUrl!),
+          if (widget.output.imageUrl != null || _savedDocument?.imagePath != null) ...[
+            _CapturedImageCard(
+              imageUrl: widget.output.imageUrl ?? '',
+              localImagePath: _savedDocument?.imagePath,
+            ),
             const SizedBox(height: AppSpacing.md),
           ],
 
@@ -538,11 +561,18 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _CapturedImageCard extends StatelessWidget {
-  const _CapturedImageCard({required this.imageUrl});
+  const _CapturedImageCard({
+    required this.imageUrl,
+    this.localImagePath,
+  });
+
   final String imageUrl;
+  final String? localImagePath;
 
   @override
   Widget build(BuildContext context) {
+    final hasLocalImage = localImagePath != null && File(localImagePath!).existsSync();
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -559,46 +589,52 @@ class _CapturedImageCard extends StatelessWidget {
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              imageUrl,
-              fit: BoxFit.contain,
-              width: double.infinity,
-              loadingBuilder: (context, child, progress) {
-                if (progress == null) return child;
-                return SizedBox(
-                  height: 220,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      value: progress.expectedTotalBytes != null
-                          ? progress.cumulativeBytesLoaded /
-                              progress.expectedTotalBytes!
-                          : null,
-                      color: AppColors.purple,
+            child: hasLocalImage
+                ? Image.file(
+                    File(localImagePath!),
+                    fit: BoxFit.contain,
+                    width: double.infinity,
+                  )
+                : Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    width: double.infinity,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return SizedBox(
+                        height: 220,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            value: progress.expectedTotalBytes != null
+                                ? progress.cumulativeBytesLoaded /
+                                    progress.expectedTotalBytes!
+                                : null,
+                            color: AppColors.purple,
+                          ),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: AppColors.cloud,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.image_not_supported_outlined,
+                                color: Colors.black38, size: 32),
+                            SizedBox(height: 8),
+                            Text('Image unavailable',
+                                style:
+                                    TextStyle(color: Colors.black54, fontSize: 12)),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                );
-              },
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 180,
-                decoration: BoxDecoration(
-                  color: AppColors.cloud,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.image_not_supported_outlined,
-                          color: Colors.black38, size: 32),
-                      SizedBox(height: 8),
-                      Text('Image unavailable',
-                          style:
-                              TextStyle(color: Colors.black54, fontSize: 12)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
           ),
         ],
       ),

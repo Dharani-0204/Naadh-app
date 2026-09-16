@@ -3,6 +3,14 @@ import 'dart:async';
 import '../domain/reader_device.dart';
 import 'services/pi_api_service.dart';
 
+class OcrFailureException implements Exception {
+  final String message;
+  const OcrFailureException([this.message = 'No text detected in image. Please adjust lighting/position and try again.']);
+
+  @override
+  String toString() => message;
+}
+
 class RaspberryPiDevice implements ReaderDevice {
   RaspberryPiDevice({
     PiApiService? apiService,
@@ -14,11 +22,17 @@ class RaspberryPiDevice implements ReaderDevice {
       StreamController<ReaderConnectionStatus>.broadcast();
 
   Map<String, dynamic>? _lastCapture;
+  Map<String, dynamic>? _lastTriggeredPage; // immediate trigger result
+  String? _sessionId;
+  String? _accessToken;
 
   @override
   Stream<ReaderConnectionStatus> get status => _controller.stream;
 
   Map<String, dynamic>? get lastCapture => _lastCapture;
+  Map<String, dynamic>? get lastTriggeredPage => _lastTriggeredPage;
+  String? get sessionId => _sessionId;
+  String? get accessToken => _accessToken;
 
   @override
   Future<void> connect() async {
@@ -44,8 +58,12 @@ class RaspberryPiDevice implements ReaderDevice {
       final result = await _apiService.startSession(userName);
 
       if (result['success'] == true) {
+        _sessionId = result['session_id'] as String?;
+        _accessToken = result['access_token'] as String?;
         _controller.add(ReaderConnectionStatus.connected);
       } else {
+        _sessionId = null;
+        _accessToken = null;
         _controller.add(ReaderConnectionStatus.disconnected);
 
         throw Exception(
@@ -53,6 +71,25 @@ class RaspberryPiDevice implements ReaderDevice {
         );
       }
     } catch (e) {
+      // If Pi server is stuck in APP_ACTIVE from an un-ended session (HTTP 409),
+      // force end the orphaned session and retry once.
+      final errStr = e.toString();
+      if (errStr.contains('409') || errStr.contains('being used by another user')) {
+        try {
+          await _apiService.endSession();
+          await Future<void>.delayed(const Duration(milliseconds: 600));
+          final retryResult = await _apiService.startSession(userName);
+          if (retryResult['success'] == true) {
+            _sessionId = retryResult['session_id'] as String?;
+            _accessToken = retryResult['access_token'] as String?;
+            _controller.add(ReaderConnectionStatus.connected);
+            return;
+          }
+        } catch (_) {}
+      }
+
+      _sessionId = null;
+      _accessToken = null;
       _controller.add(ReaderConnectionStatus.disconnected);
       rethrow;
     }
@@ -60,7 +97,7 @@ class RaspberryPiDevice implements ReaderDevice {
 
   @override
   Future<void> disconnect() async {
-    _controller.add(ReaderConnectionStatus.disconnected);
+    await endSession();
   }
 
   @override
@@ -68,12 +105,89 @@ class RaspberryPiDevice implements ReaderDevice {
     final result = await _apiService.captureImage();
 
     if (result['success'] != true) {
+      if (result['reason'] == 'text_not_detected') {
+        throw OcrFailureException(
+          result['message'] as String? ?? 'No text detected in image. Please try again.',
+        );
+      }
       throw Exception(
-        result['message'] ?? 'Failed to capture image',
+        result['message'] as String? ?? 'Failed to capture image',
       );
     }
 
     _lastCapture = result;
+  }
+
+  /// Triggers an async capture on the Pi and returns immediately.
+  /// The Pi captures the image and then processes OCR + summary + audio
+  /// in the background. Call [pollPageUntilReady] to wait for completion.
+  ///
+  /// Returns a map with:
+  ///   - page_number (int)
+  ///   - status: "PROCESSING"
+  ///   - image_url: relative path for immediate image display
+  Future<Map<String, dynamic>> triggerCaptureAsync() async {
+    final result = await _apiService.triggerCapture();
+
+    if (result['success'] != true) {
+      throw Exception(
+        result['message'] as String? ?? 'Failed to trigger capture',
+      );
+    }
+
+    _lastTriggeredPage = result;
+    return result;
+  }
+
+  /// Polls GET /capture/{pageNumber} until the Pi reports READY or FAILED.
+  /// Polls every [pollInterval] (default 2 s). Throws after [maxAttempts]
+  /// polls with no READY/FAILED status (default ~5 min at 2 s intervals).
+  ///
+  /// On READY: stores result in [lastCapture] and returns it.
+  /// On FAILED: throws [OcrFailureException].
+  /// On timeout: throws Exception.
+  Future<Map<String, dynamic>> pollPageUntilReady(
+    int pageNumber, {
+    Duration pollInterval = const Duration(seconds: 2),
+    int maxAttempts = 150,
+    void Function(String status)? onStatusUpdate,
+  }) async {
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      await Future<void>.delayed(pollInterval);
+
+      Map<String, dynamic> data;
+      try {
+        data = await _apiService.getCaptureStatus(pageNumber);
+      } catch (e) {
+        // Transient network hiccup — keep polling
+        continue;
+      }
+
+      final status = (data['status'] as String? ?? '').toUpperCase();
+      onStatusUpdate?.call(status);
+
+      if (status == 'READY') {
+        _lastCapture = data;
+        return data;
+      }
+
+      if (status == 'FAILED') {
+        final reason = data['reason'] as String?;
+        final message = data['message'] as String?;
+        if (reason == 'text_not_detected') {
+          throw OcrFailureException(
+            message ?? 'No text detected in image. Please adjust lighting/position and try again.',
+          );
+        }
+        throw Exception(message ?? 'Page $pageNumber processing failed on Pi');
+      }
+
+      // QUEUED or PROCESSING — keep polling
+    }
+
+    throw Exception(
+      'Timed out waiting for page $pageNumber to finish processing on Pi.',
+    );
   }
 
   @override
@@ -131,7 +245,12 @@ class RaspberryPiDevice implements ReaderDevice {
   }
 
   Future<void> endSession() async {
-    await _apiService.endSession();
+    try {
+      await _apiService.endSession();
+    } catch (_) {}
+    _sessionId = null;
+    _accessToken = null;
+    _lastCapture = null;
     _controller.add(ReaderConnectionStatus.disconnected);
   }
 

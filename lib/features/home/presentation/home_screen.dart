@@ -16,6 +16,7 @@ class HomeScreen extends StatefulWidget {
     required this.onFinish,
     required this.pageCount,
     this.onDeletePage,
+    this.ocrFailureMessage,
   });
 
   final ReaderConnectionStatus status;
@@ -24,6 +25,7 @@ class HomeScreen extends StatefulWidget {
   final VoidCallback onFinish;
   final int pageCount;
   final VoidCallback? onDeletePage;
+  final String? ocrFailureMessage;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -144,7 +146,33 @@ class _HomeScreenState extends State<HomeScreen> {
               ? _buildEmptyState()
               : _buildPageThumbnailsList(),
 
-          const SizedBox(height: AppSpacing.xl),
+          if (widget.ocrFailureMessage != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.danger.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.danger.withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: AppColors.danger),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      widget.ocrFailureMessage!,
+                      style: const TextStyle(
+                        color: AppColors.danger,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
 
           Row(
             children: [
