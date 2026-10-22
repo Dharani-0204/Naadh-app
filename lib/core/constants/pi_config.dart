@@ -3,7 +3,7 @@ class PiConfig {
 
   /// Base URL of the FastAPI server running on the Raspberry Pi.
   /// Update this if the Pi's IP address changes.
-  static const String baseUrl = 'http://192.168.1.8:8000';
+  static const String baseUrl = 'http://drpi2copy1.local:8000';
 
   /// Live MJPEG camera stream endpoint.
   /// Returns a multipart/x-mixed-replace stream of JPEG frames.
