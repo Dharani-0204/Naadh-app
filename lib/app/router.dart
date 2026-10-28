@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../features/device/data/models/device_qr_payload.dart';
+import '../features/device/presentation/device_identified_screen.dart';
+import '../features/device/presentation/device_qr_scanner_screen.dart';
+import '../features/device/presentation/wifi_onboarding_screen.dart';
 import '../features/document/data/models/saved_document.dart';
 import '../features/document/presentation/document_results_screen.dart';
 import '../features/document/presentation/saved_document_detail_screen.dart';
@@ -12,16 +16,16 @@ abstract final class AppRoutes {
   static const processing = '/processing';
   static const documentResults = '/document-results';
   static const savedDocumentDetail = '/saved-document-detail';
+  static const deviceQrScanner = '/device-qr-scanner';
+  static const deviceIdentified = '/device-identified';
+  static const wifiOnboarding = '/wifi-onboarding';
 }
 
 class DocumentResultsArgs {
   final DocumentOutput output;
   final SavedDocument? savedDocument;
 
-  const DocumentResultsArgs({
-    required this.output,
-    this.savedDocument,
-  });
+  const DocumentResultsArgs({required this.output, this.savedDocument});
 }
 
 class ProcessingArgs {
@@ -94,6 +98,30 @@ abstract final class AppRouter {
         final doc = settings.arguments as SavedDocument;
         return MaterialPageRoute<bool>(
           builder: (_) => SavedDocumentDetailScreen(document: doc),
+          settings: settings,
+        );
+
+      case AppRoutes.deviceQrScanner:
+        return MaterialPageRoute<void>(
+          builder: (_) => const DeviceQrScannerScreen(),
+          settings: settings,
+        );
+
+      case AppRoutes.deviceIdentified:
+        final payload = settings.arguments as DeviceQrPayload;
+        return MaterialPageRoute<void>(
+          builder: (_) => DeviceIdentifiedScreen(payload: payload),
+          settings: settings,
+        );
+
+      case AppRoutes.wifiOnboarding:
+        final deviceId = (settings.arguments is String)
+            ? settings.arguments as String
+            : (settings.arguments is DeviceQrPayload
+                  ? (settings.arguments as DeviceQrPayload).deviceId
+                  : 'NAADH-UNKNOWN');
+        return MaterialPageRoute<void>(
+          builder: (_) => WifiOnboardingScreen(deviceId: deviceId),
           settings: settings,
         );
 

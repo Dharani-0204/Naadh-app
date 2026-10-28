@@ -9,10 +9,7 @@ class DocumentShareService {
 
   /// Opens the native share sheet with plain text.
   Future<void> shareText(String text, {String? subject}) async {
-    await Share.share(
-      text,
-      subject: subject ?? 'Alien Document Reader',
-    );
+    await Share.share(text, subject: subject ?? 'Alien Document Reader');
   }
 
   // ─── Files ────────────────────────────────────────────────────────
@@ -21,30 +18,17 @@ class DocumentShareService {
   ///
   /// [mimeType] examples: 'application/pdf', 'text/plain', 'audio/wav',
   /// 'application/zip'
-  Future<void> shareFile(
-    File file, {
-    String? subject,
-    String? mimeType,
-  }) async {
+  Future<void> shareFile(File file, {String? subject, String? mimeType}) async {
     if (!await file.exists()) {
       throw Exception('File not found: ${file.path}');
     }
-    await Share.shareXFiles(
-      [
-        XFile(
-          file.path,
-          mimeType: mimeType ?? _mimeFromExtension(file.path),
-        ),
-      ],
-      subject: subject ?? 'Alien Document Reader',
-    );
+    await Share.shareXFiles([
+      XFile(file.path, mimeType: mimeType ?? _mimeFromExtension(file.path)),
+    ], subject: subject ?? 'Alien Document Reader');
   }
 
   /// Opens the native share sheet with multiple files.
-  Future<void> shareFiles(
-    List<File> files, {
-    String? subject,
-  }) async {
+  Future<void> shareFiles(List<File> files, {String? subject}) async {
     final xFiles = <XFile>[];
     for (final f in files) {
       if (await f.exists()) {

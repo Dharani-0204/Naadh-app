@@ -57,17 +57,11 @@ class _OutputScreenState extends State<OutputScreen> {
 
         // Empty state — results appear in DocumentResultsScreen
         Container(
-          padding: const EdgeInsets.symmetric(
-            vertical: 48,
-            horizontal: 24,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
           decoration: BoxDecoration(
             color: AppColors.cloud.withValues(alpha: 0.35),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.gray,
-              width: 0.6,
-            ),
+            border: Border.all(color: AppColors.gray, width: 0.6),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -81,18 +75,18 @@ class _OutputScreenState extends State<OutputScreen> {
               Text(
                 'No results yet',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.charcoal,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.charcoal,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
                 'Capture a document on the Home tab,\n'
                 'then tap Process to view results.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.black54,
-                      height: 1.5,
-                    ),
+                  color: Colors.black54,
+                  height: 1.5,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],

@@ -22,7 +22,7 @@ import 'pdf_service.dart';
 /// [_prefsKey] so it survives app restarts.
 class DocumentStorageService {
   DocumentStorageService({PdfService? pdfService})
-      : _pdf = pdfService ?? PdfService();
+    : _pdf = pdfService ?? PdfService();
 
   final PdfService _pdf;
 
@@ -63,8 +63,11 @@ class DocumentStorageService {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     final dir = await _docDir(id);
     final now = DateTime.now();
-    final title = documentTitle ??
-        (pageNumber != null ? 'Scan Page $pageNumber' : 'Scan ${_shortDate(now)}');
+    final title =
+        documentTitle ??
+        (pageNumber != null
+            ? 'Scan Page $pageNumber'
+            : 'Scan ${_shortDate(now)}');
 
     // ── Download captured image ───────────────────────────────────
     String? imagePath;
@@ -251,8 +254,7 @@ class DocumentStorageService {
     if (zipData == null) throw Exception('Failed to encode ZIP archive');
 
     final tmpDir = await getTemporaryDirectory();
-    final zipPath =
-        '${tmpDir.path}/alien_reader_${document.documentId}.zip';
+    final zipPath = '${tmpDir.path}/alien_reader_${document.documentId}.zip';
     final zipFile = File(zipPath);
     await zipFile.writeAsBytes(Uint8List.fromList(zipData));
     return zipFile;
@@ -316,9 +318,7 @@ class DocumentStorageService {
         .get(Uri.parse(url))
         .timeout(const Duration(seconds: 30));
     if (response.statusCode != 200) {
-      throw Exception(
-        'Download failed: HTTP ${response.statusCode} for $url',
-      );
+      throw Exception('Download failed: HTTP ${response.statusCode} for $url');
     }
     final file = File(destPath);
     await file.parent.create(recursive: true);
@@ -333,8 +333,18 @@ class DocumentStorageService {
 
   String _shortDate(DateTime dt) {
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${dt.day}_${months[dt.month - 1]}_${dt.year}';
   }

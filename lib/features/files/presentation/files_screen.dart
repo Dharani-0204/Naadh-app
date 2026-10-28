@@ -75,8 +75,9 @@ class _FilesScreenState extends State<FilesScreen> {
 
   Future<void> _loadSessionCaptures() async {
     if (widget.device == null) {
-      setState(() =>
-          _sessionError = 'Not connected to a Raspberry Pi session.');
+      setState(
+        () => _sessionError = 'Not connected to a Raspberry Pi session.',
+      );
       return;
     }
     setState(() {
@@ -104,10 +105,9 @@ class _FilesScreenState extends State<FilesScreen> {
   // ─── Navigation ───────────────────────────────────────────────────
 
   Future<void> _openSavedDoc(SavedDocument doc) async {
-    final deleted = await Navigator.of(context).pushNamed(
-      AppRoutes.savedDocumentDetail,
-      arguments: doc,
-    );
+    final deleted = await Navigator.of(
+      context,
+    ).pushNamed(AppRoutes.savedDocumentDetail, arguments: doc);
     if (deleted == true) {
       await _loadSavedDocs();
     }
@@ -191,17 +191,14 @@ class _FilesScreenState extends State<FilesScreen> {
 
       await Navigator.of(context).pushNamed(
         AppRoutes.documentResults,
-        arguments: DocumentResultsArgs(
-          output: output,
-          savedDocument: savedDoc,
-        ),
+        arguments: DocumentResultsArgs(output: output, savedDocument: savedDoc),
       );
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -267,9 +264,7 @@ class _FilesScreenState extends State<FilesScreen> {
 
         // ── Content ───────────────────────────────────────────────
         Expanded(
-          child: _tab == _Tab.saved
-              ? _buildSavedTab()
-              : _buildSessionTab(),
+          child: _tab == _Tab.saved ? _buildSavedTab() : _buildSessionTab(),
         ),
       ],
     );
@@ -342,38 +337,39 @@ class _FilesScreenState extends State<FilesScreen> {
   // ─── Common state widgets ─────────────────────────────────────────
 
   Widget _loadingWidget(String msg) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(color: AppColors.purple),
-            const SizedBox(height: 16),
-            Text(msg, style: const TextStyle(color: Colors.black54)),
-          ],
-        ),
-      );
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const CircularProgressIndicator(color: AppColors.purple),
+        const SizedBox(height: 16),
+        Text(msg, style: const TextStyle(color: Colors.black54)),
+      ],
+    ),
+  );
 
   Widget _errorWidget(String error, VoidCallback retry) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cloud_off_outlined,
-                  size: 40, color: Colors.black38),
-              const SizedBox(height: 12),
-              Text(error,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.black54)),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: retry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.cloud_off_outlined, size: 40, color: Colors.black38),
+          const SizedBox(height: 12),
+          Text(
+            error,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.black54),
           ),
-        ),
-      );
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: retry,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Retry'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -393,8 +389,18 @@ class _SavedDocCard extends StatelessWidget {
   final VoidCallback onTap;
 
   static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   @override
@@ -402,8 +408,7 @@ class _SavedDocCard extends StatelessWidget {
     final d = document.captureDate;
     final h = d.hour.toString().padLeft(2, '0');
     final m = d.minute.toString().padLeft(2, '0');
-    final dateStr =
-        '${d.day} ${_months[d.month - 1]} ${d.year} · $h:$m';
+    final dateStr = '${d.day} ${_months[d.month - 1]} ${d.year} · $h:$m';
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -432,24 +437,26 @@ class _SavedDocCard extends StatelessWidget {
                   children: [
                     Text(
                       document.documentTitle,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 3),
-                    Text(dateStr,
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.black54)),
+                    Text(
+                      dateStr,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.black54,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     Text(
                       document.textPreview,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: Colors.black54),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.black54),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -475,8 +482,11 @@ class _SavedDocCard extends StatelessWidget {
     return Container(
       color: AppColors.cloud,
       child: const Center(
-        child: Icon(Icons.description_outlined,
-            color: Colors.black38, size: 26),
+        child: Icon(
+          Icons.description_outlined,
+          color: Colors.black38,
+          size: 26,
+        ),
       ),
     );
   }
@@ -533,18 +543,16 @@ class _SessionCaptureCard extends StatelessWidget {
                   children: [
                     Text(
                       'Page $pageNumber',
-                      style:
-                          Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Tap to view OCR text and AI summary',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: Colors.black54),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.black54),
                     ),
                   ],
                 ),
@@ -558,10 +566,9 @@ class _SessionCaptureCard extends StatelessWidget {
   }
 
   Widget _placeholder() => Container(
-        color: AppColors.cloud,
-        child: const Center(
-          child: Icon(Icons.image_outlined,
-              color: Colors.black38, size: 24),
-        ),
-      );
+    color: AppColors.cloud,
+    child: const Center(
+      child: Icon(Icons.image_outlined, color: Colors.black38, size: 24),
+    ),
+  );
 }

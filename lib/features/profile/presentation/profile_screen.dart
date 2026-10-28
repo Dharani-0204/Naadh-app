@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../../app/router.dart';
 import '../../../core/constants/pi_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -171,9 +172,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   widget.userName?.isNotEmpty == true
                       ? widget.userName!
                       : 'Guest',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 Container(
@@ -205,14 +206,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: 'Device Information',
               icon: Icons.memory_outlined,
               rows: [
-                _InfoRow(
-                  label: 'Device',
-                  value: 'Raspberry Pi Alien Reader',
-                ),
-                _InfoRow(
-                  label: 'IP Address',
-                  value: _piIpAddress,
-                ),
+                _InfoRow(label: 'Device', value: 'Raspberry Pi Alien Reader'),
+                _InfoRow(label: 'IP Address', value: _piIpAddress),
                 _InfoRow(
                   label: 'Status',
                   value: _statusLabel,
@@ -226,6 +221,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       : Colors.black54,
                 ),
               ],
+              bottomAction: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(
+                        context,
+                      ).pushNamed(AppRoutes.deviceQrScanner);
+                    },
+                    icon: const Icon(Icons.qr_code_scanner, size: 18),
+                    label: const Text('ADD DEVICE (QR SETUP)'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.purple,
+                      side: const BorderSide(color: AppColors.purple),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -246,14 +261,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     )
                   : null,
               rows: [
-                _InfoRow(
-                  label: 'Documents Saved',
-                  value: '$_savedDocCount',
-                ),
-                _InfoRow(
-                  label: 'Pages Scanned',
-                  value: '${widget.pageCount}',
-                ),
+                _InfoRow(label: 'Documents Saved', value: '$_savedDocCount'),
+                _InfoRow(label: 'Pages Scanned', value: '${widget.pageCount}'),
                 _InfoRow(
                   label: 'Storage Used',
                   value: _statsLoading ? '…' : _formatBytes(_storageTotalBytes),
@@ -303,12 +312,14 @@ class _InfoSection extends StatelessWidget {
     required this.icon,
     required this.rows,
     this.trailing,
+    this.bottomAction,
   });
 
   final String title;
   final IconData icon;
   final List<_InfoRow> rows;
   final Widget? trailing;
+  final Widget? bottomAction;
 
   @override
   Widget build(BuildContext context) {
@@ -321,10 +332,7 @@ class _InfoSection extends StatelessWidget {
             Icon(icon, size: 18, color: AppColors.purpleMid),
             const SizedBox(width: 8),
             Text(title, style: Theme.of(context).textTheme.titleMedium),
-            if (trailing != null) ...[
-              const Spacer(),
-              trailing!,
-            ],
+            if (trailing != null) ...[const Spacer(), trailing!],
           ],
         ),
         const Divider(height: 20),
@@ -339,10 +347,7 @@ class _InfoSection extends StatelessWidget {
                   width: 120,
                   child: Text(
                     row.label,
-                    style: const TextStyle(
-                      color: Colors.black54,
-                      fontSize: 13,
-                    ),
+                    style: const TextStyle(color: Colors.black54, fontSize: 13),
                   ),
                 ),
                 Expanded(
@@ -359,6 +364,7 @@ class _InfoSection extends StatelessWidget {
             ),
           ),
         ),
+        ?bottomAction,
       ],
     );
   }
@@ -369,11 +375,7 @@ class _InfoSection extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _InfoRow {
-  const _InfoRow({
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
+  const _InfoRow({required this.label, required this.value, this.valueColor});
 
   final String label;
   final String value;

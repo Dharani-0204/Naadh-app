@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../core/constants/app_strings.dart';
+import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
 import '../features/device/data/raspberry_pi_device.dart';
 import '../features/device/domain/reader_device.dart';
@@ -103,10 +104,7 @@ class _AppShellState extends State<AppShell> {
     super.dispose();
   }
 
-  Future<void> _onSessionStarted(
-    String userName,
-    String? accessToken,
-  ) async {
+  Future<void> _onSessionStarted(String userName, String? accessToken) async {
     setState(() {
       _userName = userName;
       _sessionStarted = true;
@@ -145,13 +143,9 @@ class _AppShellState extends State<AppShell> {
         _ocrFailureMessage = null;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Connected as $_userName',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Connected as $_userName')));
     } catch (e) {
       if (!mounted) return;
 
@@ -159,11 +153,9 @@ class _AppShellState extends State<AppShell> {
         _status = ReaderConnectionStatus.disconnected;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Connection failed: $e'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Connection failed: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -210,14 +202,15 @@ class _AppShellState extends State<AppShell> {
       });
       await statusCtrl.close();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Capture failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Capture failed: $e')));
       }
       return;
     }
 
-    final pageNumber = (triggerResult['page_number'] as int?) ?? targetPageNumber;
+    final pageNumber =
+        (triggerResult['page_number'] as int?) ?? targetPageNumber;
     final imageRelUrl = triggerResult['image_url'] as String?;
     final fullImageUrl = (imageRelUrl != null && imageRelUrl.isNotEmpty)
         ? _device.getFullUrl(imageRelUrl)
@@ -309,12 +302,12 @@ class _AppShellState extends State<AppShell> {
         : null;
     final fullOriginalAudioUrl =
         (originalAudioRaw != null && originalAudioRaw.isNotEmpty)
-            ? _device.getFullUrl(originalAudioRaw)
-            : null;
+        ? _device.getFullUrl(originalAudioRaw)
+        : null;
     final fullSummaryAudioUrl =
         (summaryAudioRaw != null && summaryAudioRaw.isNotEmpty)
-            ? _device.getFullUrl(summaryAudioRaw)
-            : null;
+        ? _device.getFullUrl(summaryAudioRaw)
+        : null;
 
     final output = DocumentOutput(
       originalText: originalText.isNotEmpty
@@ -348,10 +341,7 @@ class _AppShellState extends State<AppShell> {
     // Replace Processing screen with DocumentResults (Output page)
     await Navigator.of(context).pushReplacementNamed(
       AppRoutes.documentResults,
-      arguments: DocumentResultsArgs(
-        output: output,
-        savedDocument: savedDoc,
-      ),
+      arguments: DocumentResultsArgs(output: output, savedDocument: savedDoc),
     );
   }
 
@@ -376,9 +366,7 @@ class _AppShellState extends State<AppShell> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Disconnected from Raspberry Pi'),
-      ),
+      const SnackBar(content: Text('Disconnected from Raspberry Pi')),
     );
   }
 
@@ -405,17 +393,11 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     if (_isLoadingSession) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (!_sessionStarted) {
-      return SessionStartScreen(
-        onSessionStarted: _onSessionStarted,
-      );
+      return SessionStartScreen(onSessionStarted: _onSessionStarted);
     }
 
     return Scaffold(
@@ -478,10 +460,7 @@ class _AppShellState extends State<AppShell> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.memory,
-                  size: 48,
-                ),
+                const Icon(Icons.memory, size: 48),
                 const SizedBox(height: 16),
                 Text(
                   'Raspberry Pi Connection',
@@ -495,27 +474,59 @@ class _AppShellState extends State<AppShell> {
                       : 'Disconnected',
                   style: TextStyle(
                     fontSize: 16,
-                    color: _status == ReaderConnectionStatus.connected ||
+                    color:
+                        _status == ReaderConnectionStatus.connected ||
                             _status == ReaderConnectionStatus.busy
                         ? Colors.green
                         : Colors.red,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'User: ${_userName ?? 'Unknown'}',
-                ),
+                Text('User: ${_userName ?? 'Unknown'}'),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.of(
+                        context,
+                      ).pushNamed(AppRoutes.deviceQrScanner);
+                    },
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: const Text('ADD DEVICE (QR SETUP)'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.purple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
                     onPressed: () async {
                       Navigator.pop(context);
                       await _disconnect();
                     },
                     icon: const Icon(Icons.link_off),
                     label: const Text('DISCONNECT'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red.shade700,
+                      side: BorderSide(color: Colors.red.shade300),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
                   ),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).pushNamed(AppRoutes.settings);
+                  },
+                  icon: const Icon(Icons.settings_outlined),
+                  label: const Text('All Settings'),
                 ),
               ],
             ),

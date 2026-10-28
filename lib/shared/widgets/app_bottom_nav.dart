@@ -18,7 +18,8 @@ class AppBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return NavigationBar(
       backgroundColor: Colors.white,
-      indicatorColor: AppColors.lilac,         // Purple/lilac highlight behind selected icon
+      indicatorColor:
+          AppColors.lilac, // Purple/lilac highlight behind selected icon
       selectedIndex: MainTab.values.indexOf(currentTab),
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       animationDuration: const Duration(milliseconds: 300),

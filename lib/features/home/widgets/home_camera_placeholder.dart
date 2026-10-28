@@ -21,8 +21,7 @@ class HomeCameraPlaceholder extends StatelessWidget {
     final (labelText, dotColor) = switch (status) {
       ReaderConnectionStatus.connected => ('CONNECTED', AppColors.success),
       ReaderConnectionStatus.connecting => ('CONNECTING', AppColors.orange),
-      ReaderConnectionStatus.disconnected =>
-        ('DISCONNECTED', AppColors.danger),
+      ReaderConnectionStatus.disconnected => ('DISCONNECTED', AppColors.danger),
       ReaderConnectionStatus.busy => ('PROCESSING...', AppColors.purpleMid),
     };
 
@@ -30,10 +29,7 @@ class HomeCameraPlaceholder extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF121218), // dark fallback behind the stream
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.orange,
-          width: 2.0,
-        ),
+        border: Border.all(color: AppColors.orange, width: 2.0),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
@@ -43,7 +39,8 @@ class HomeCameraPlaceholder extends StatelessWidget {
             Positioned.fill(
               child: MjpegCameraView(
                 streamUrl: PiConfig.streamUrl,
-                active: status == ReaderConnectionStatus.connected ||
+                active:
+                    status == ReaderConnectionStatus.connected ||
                     status == ReaderConnectionStatus.busy,
               ),
             ),

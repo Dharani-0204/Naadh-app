@@ -204,9 +204,9 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: Text(
                 'Share — ${_sectionLabel(section)}',
-                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                style: Theme.of(
+                  ctx,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
             ListTile(
@@ -285,7 +285,10 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
             ? _savedDocument!.originalAudioPath
             : _savedDocument!.summaryAudioPath;
         if (localPath != null && File(localPath).existsSync()) {
-          await _share.shareFile(File(localPath), subject: 'Alien Document Reader Audio');
+          await _share.shareFile(
+            File(localPath),
+            subject: 'Alien Document Reader Audio',
+          );
           return;
         }
       }
@@ -297,7 +300,9 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
         throw Exception('HTTP ${response.statusCode}');
       }
       final tmpDir = await getTemporaryDirectory();
-      final tempFile = File('${tmpDir.path}/${section}_audio_${DateTime.now().millisecondsSinceEpoch}.wav');
+      final tempFile = File(
+        '${tmpDir.path}/${section}_audio_${DateTime.now().millisecondsSinceEpoch}.wav',
+      );
       await tempFile.writeAsBytes(response.bodyBytes);
 
       await _share.shareFile(tempFile, subject: 'Alien Document Reader Audio');
@@ -374,8 +379,8 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
           backgroundColor: success == true
               ? Colors.green.shade700
               : success == false
-                  ? Colors.red.shade700
-                  : null,
+              ? Colors.red.shade700
+              : null,
           duration: duration,
         ),
       );
@@ -427,7 +432,8 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (widget.output.imageUrl != null || _savedDocument?.imagePath != null) ...[
+          if (widget.output.imageUrl != null ||
+              _savedDocument?.imagePath != null) ...[
             _CapturedImageCard(
               imageUrl: widget.output.imageUrl ?? '',
               localImagePath: _savedDocument?.imagePath,
@@ -468,11 +474,8 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
             onReadAloud: () =>
                 _toggleSpeak(widget.output.summaryText, 'summary'),
             onCopy: () => _copyText(widget.output.summaryText),
-            onSave: () => _showSaveOptions(
-              context,
-              widget.output.summaryText,
-              'summary',
-            ),
+            onSave: () =>
+                _showSaveOptions(context, widget.output.summaryText, 'summary'),
             onShare: () => _showShareOptions(
               context,
               widget.output.summaryText,
@@ -511,8 +514,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
-                        Icon(Icons.check_circle,
-                            color: Colors.green, size: 16),
+                        Icon(Icons.check_circle, color: Colors.green, size: 16),
                         SizedBox(width: 6),
                         Text(
                           'Saved to Files tab',
@@ -549,8 +551,18 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
 
   String _shortDate(DateTime dt) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
@@ -561,17 +573,15 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _CapturedImageCard extends StatelessWidget {
-  const _CapturedImageCard({
-    required this.imageUrl,
-    this.localImagePath,
-  });
+  const _CapturedImageCard({required this.imageUrl, this.localImagePath});
 
   final String imageUrl;
   final String? localImagePath;
 
   @override
   Widget build(BuildContext context) {
-    final hasLocalImage = localImagePath != null && File(localImagePath!).existsSync();
+    final hasLocalImage =
+        localImagePath != null && File(localImagePath!).existsSync();
 
     return AppCard(
       child: Column(
@@ -579,11 +589,16 @@ class _CapturedImageCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.document_scanner_outlined,
-                  size: 18, color: AppColors.purpleMid),
+              const Icon(
+                Icons.document_scanner_outlined,
+                size: 18,
+                color: AppColors.purpleMid,
+              ),
               const SizedBox(width: 8),
-              Text('Captured Document',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Captured Document',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -607,7 +622,7 @@ class _CapturedImageCard extends StatelessWidget {
                           child: CircularProgressIndicator(
                             value: progress.expectedTotalBytes != null
                                 ? progress.cumulativeBytesLoaded /
-                                    progress.expectedTotalBytes!
+                                      progress.expectedTotalBytes!
                                 : null,
                             color: AppColors.purple,
                           ),
@@ -624,12 +639,19 @@ class _CapturedImageCard extends StatelessWidget {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.image_not_supported_outlined,
-                                color: Colors.black38, size: 32),
+                            Icon(
+                              Icons.image_not_supported_outlined,
+                              color: Colors.black38,
+                              size: 32,
+                            ),
                             SizedBox(height: 8),
-                            Text('Image unavailable',
-                                style:
-                                    TextStyle(color: Colors.black54, fontSize: 12)),
+                            Text(
+                              'Image unavailable',
+                              style: TextStyle(
+                                color: Colors.black54,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -681,8 +703,10 @@ class _SectionCard extends StatelessWidget {
               Icon(icon, size: 18, color: iconColor),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(title,
-                    style: Theme.of(context).textTheme.titleMedium),
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
               // Copy
               IconButton(
@@ -730,8 +754,9 @@ class _SectionCard extends StatelessWidget {
           // ── Text body ─────────────────────────────────────────────
           SelectableText(
             text,
-            style:
-                Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.7),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(height: 1.7),
           ),
         ],
       ),
@@ -763,9 +788,7 @@ class _TtsButton extends StatelessWidget {
         icon: AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),
           child: Icon(
-            isReading
-                ? Icons.stop_circle_outlined
-                : Icons.volume_up_outlined,
+            isReading ? Icons.stop_circle_outlined : Icons.volume_up_outlined,
             key: ValueKey(isReading),
             color: isReading ? AppColors.orange : Colors.black45,
             size: 22,

@@ -24,8 +24,7 @@ class SavedDocumentDetailScreen extends StatefulWidget {
       _SavedDocumentDetailScreenState();
 }
 
-class _SavedDocumentDetailScreenState
-    extends State<SavedDocumentDetailScreen> {
+class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
   final _storage = DocumentStorageService();
   final _share = DocumentShareService();
   late final FlutterTts _tts;
@@ -128,8 +127,7 @@ class _SavedDocumentDetailScreenState
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style:
-                FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
             child: const Text('Delete'),
           ),
         ],
@@ -160,8 +158,8 @@ class _SavedDocumentDetailScreenState
           backgroundColor: success == true
               ? Colors.green.shade700
               : success == false
-                  ? Colors.red.shade700
-                  : null,
+              ? Colors.red.shade700
+              : null,
         ),
       );
   }
@@ -178,7 +176,9 @@ class _SavedDocumentDetailScreenState
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(width: 14),
               Text(msg),
@@ -196,10 +196,7 @@ class _SavedDocumentDetailScreenState
     final doc = widget.document;
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          doc.documentTitle,
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: Text(doc.documentTitle, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
             onPressed: _confirmDelete,
@@ -244,9 +241,12 @@ class _SavedDocumentDetailScreenState
                   _snackLoading('Saving…');
                   try {
                     final f = await _storage.saveOriginalTextAsTxt(
-                        doc.originalText,
-                        docId: doc.documentId);
-                    if (mounted) _snack('Saved: ${f.path.split('/').last}', success: true);
+                      doc.originalText,
+                      docId: doc.documentId,
+                    );
+                    if (mounted) {
+                      _snack('Saved: ${f.path.split('/').last}', success: true);
+                    }
                   } catch (e) {
                     if (mounted) _snack('Failed: $e', success: false);
                   }
@@ -264,7 +264,12 @@ class _SavedDocumentDetailScreenState
                       captureDate: doc.captureDate,
                       docId: doc.documentId,
                     );
-                    if (mounted) _snack('PDF saved: ${f.path.split('/').last}', success: true);
+                    if (mounted) {
+                      _snack(
+                        'PDF saved: ${f.path.split('/').last}',
+                        success: true,
+                      );
+                    }
                   } catch (e) {
                     if (mounted) _snack('Failed: $e', success: false);
                   }
@@ -284,7 +289,8 @@ class _SavedDocumentDetailScreenState
                 _SectionAction(
                   icon: Icons.audio_file_outlined,
                   label: 'Share Audio',
-                  onTap: () => _shareFile(doc.originalAudioPath, 'Original Audio'),
+                  onTap: () =>
+                      _shareFile(doc.originalAudioPath, 'Original Audio'),
                 ),
             ],
           ),
@@ -312,9 +318,12 @@ class _SavedDocumentDetailScreenState
                   _snackLoading('Saving…');
                   try {
                     final f = await _storage.saveSummaryAsTxt(
-                        doc.summaryText,
-                        docId: doc.documentId);
-                    if (mounted) _snack('Saved: ${f.path.split('/').last}', success: true);
+                      doc.summaryText,
+                      docId: doc.documentId,
+                    );
+                    if (mounted) {
+                      _snack('Saved: ${f.path.split('/').last}', success: true);
+                    }
                   } catch (e) {
                     if (mounted) _snack('Failed: $e', success: false);
                   }
@@ -332,7 +341,12 @@ class _SavedDocumentDetailScreenState
                       captureDate: doc.captureDate,
                       docId: doc.documentId,
                     );
-                    if (mounted) _snack('PDF saved: ${f.path.split('/').last}', success: true);
+                    if (mounted) {
+                      _snack(
+                        'PDF saved: ${f.path.split('/').last}',
+                        success: true,
+                      );
+                    }
                   } catch (e) {
                     if (mounted) _snack('Failed: $e', success: false);
                   }
@@ -352,7 +366,8 @@ class _SavedDocumentDetailScreenState
                 _SectionAction(
                   icon: Icons.audio_file_outlined,
                   label: 'Share Audio',
-                  onTap: () => _shareFile(doc.summaryAudioPath, 'Summary Audio'),
+                  onTap: () =>
+                      _shareFile(doc.summaryAudioPath, 'Summary Audio'),
                 ),
             ],
           ),
@@ -392,13 +407,22 @@ class _MetaChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final h = date.hour.toString().padLeft(2, '0');
     final m = date.minute.toString().padLeft(2, '0');
-    final label =
-        '${date.day} ${months[date.month - 1]} ${date.year} · $h:$m';
+    final label = '${date.day} ${months[date.month - 1]} ${date.year} · $h:$m';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -409,13 +433,15 @@ class _MetaChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.calendar_today_outlined,
-              size: 14, color: Colors.black45),
+          const Icon(
+            Icons.calendar_today_outlined,
+            size: 14,
+            color: Colors.black45,
+          ),
           const SizedBox(width: 6),
           Text(
             label,
-            style:
-                const TextStyle(fontSize: 12, color: Colors.black54),
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
           ),
         ],
       ),
@@ -440,11 +466,16 @@ class _LocalImageCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.document_scanner_outlined,
-                  size: 18, color: AppColors.purpleMid),
+              const Icon(
+                Icons.document_scanner_outlined,
+                size: 18,
+                color: AppColors.purpleMid,
+              ),
               const SizedBox(width: 8),
-              Text('Captured Document',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Captured Document',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -459,12 +490,19 @@ class _LocalImageCard extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.image_not_supported_outlined,
-                              size: 32, color: Colors.black38),
+                          Icon(
+                            Icons.image_not_supported_outlined,
+                            size: 32,
+                            color: Colors.black38,
+                          ),
                           SizedBox(height: 8),
-                          Text('Image file not found',
-                              style: TextStyle(
-                                  color: Colors.black54, fontSize: 12)),
+                          Text(
+                            'Image file not found',
+                            style: TextStyle(
+                              color: Colors.black54,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -519,8 +557,7 @@ class _SavedSectionCard extends StatelessWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: actions.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(width: 6),
+              separatorBuilder: (context, index) => const SizedBox(width: 6),
               itemBuilder: (context, index) {
                 final action = actions[index];
                 return ActionChip(
@@ -554,8 +591,9 @@ class _SavedSectionCard extends StatelessWidget {
           const SizedBox(height: 6),
           SelectableText(
             text,
-            style:
-                Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.7),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(height: 1.7),
           ),
         ],
       ),

@@ -59,7 +59,8 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
   @override
   void didUpdateWidget(covariant MjpegCameraView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.active != oldWidget.active || widget.streamUrl != oldWidget.streamUrl) {
+    if (widget.active != oldWidget.active ||
+        widget.streamUrl != oldWidget.streamUrl) {
       if (widget.active) {
         _connect();
       } else {
@@ -112,8 +113,7 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
       if (response.statusCode != 200) {
         setState(() {
           _connecting = false;
-          _error =
-              'Camera unavailable\n(HTTP ${response.statusCode})';
+          _error = 'Camera unavailable\n(HTTP ${response.statusCode})';
         });
         return;
       }
@@ -130,20 +130,14 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
           debugPrint('[MjpegCameraView] Stream error: $e');
           if (mounted && widget.active) {
             setState(() => _error = 'Stream error. Reconnecting...');
-            Future<void>.delayed(
-              const Duration(seconds: 2),
-              _connect,
-            );
+            Future<void>.delayed(const Duration(seconds: 2), _connect);
           }
         },
         onDone: () {
           debugPrint('[MjpegCameraView] Stream ended.');
           if (mounted && widget.active) {
             setState(() => _error = 'Stream disconnected. Reconnecting...');
-            Future<void>.delayed(
-              const Duration(seconds: 2),
-              _connect,
-            );
+            Future<void>.delayed(const Duration(seconds: 2), _connect);
           }
         },
         cancelOnError: true,
@@ -284,10 +278,7 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
                 ),
                 label: const Text(
                   'Retry',
-                  style: TextStyle(
-                    color: AppColors.orange,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: AppColors.orange, fontSize: 12),
                 ),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: AppColors.orange),
@@ -331,10 +322,7 @@ class _MjpegCameraViewState extends State<MjpegCameraView> {
     );
 
     if (MjpegCameraView._kRotatePreview) {
-      return RotatedBox(
-        quarterTurns: 3,
-        child: frameWidget,
-      );
+      return RotatedBox(quarterTurns: 3, child: frameWidget);
     }
 
     return frameWidget;

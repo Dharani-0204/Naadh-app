@@ -122,17 +122,19 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
                       children: [
                         Text(
                           'Captured Page ${widget.pageNumber}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
+                          style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _error != null ? 'Processing failed' : _statusSubtitle(),
+                          _error != null
+                              ? 'Processing failed'
+                              : _statusSubtitle(),
                           style: TextStyle(
                             fontSize: 12,
-                            color: _error != null ? AppColors.danger : Colors.black54,
+                            color: _error != null
+                                ? AppColors.danger
+                                : Colors.black54,
                           ),
                         ),
                       ],
@@ -148,7 +150,10 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Captured Image', style: Theme.of(context).textTheme.labelMedium),
+                    Text(
+                      'Captured Image',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
                     const SizedBox(height: 10),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
@@ -160,13 +165,21 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
                           if (progress == null) return child;
                           return const SizedBox(
                             height: 160,
-                            child: Center(child: CircularProgressIndicator(color: AppColors.purple)),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.purple,
+                              ),
+                            ),
                           );
                         },
                         errorBuilder: (context, error, _) => const SizedBox(
                           height: 80,
                           child: Center(
-                            child: Icon(Icons.broken_image_outlined, color: Colors.black26, size: 40),
+                            child: Icon(
+                              Icons.broken_image_outlined,
+                              color: Colors.black26,
+                              size: 40,
+                            ),
                           ),
                         ),
                       ),
@@ -187,11 +200,23 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
                       children: [
                         Icon(Icons.error_outline, color: AppColors.danger),
                         SizedBox(width: 8),
-                        Text('Capture Error', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.danger)),
+                        Text(
+                          'Capture Error',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.danger,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Text(_error!, style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                    Text(
+                      _error!,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black87,
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
@@ -209,7 +234,10 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Processing document...', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Processing document...',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 12),
                     LinearProgressIndicator(
                       value: _progressValue(),
@@ -275,11 +303,17 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
           height: 18,
           child: done
               ? const Icon(Icons.check_circle, color: Colors.green, size: 18)
-              : const CircularProgressIndicator(strokeWidth: 2, color: AppColors.purpleMid),
+              : const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.purpleMid,
+                ),
         ),
         title: Text(
           step.$1,
-          style: TextStyle(fontSize: 14, color: done ? Colors.black87 : Colors.black54),
+          style: TextStyle(
+            fontSize: 14,
+            color: done ? Colors.black87 : Colors.black54,
+          ),
         ),
       );
     }).toList();

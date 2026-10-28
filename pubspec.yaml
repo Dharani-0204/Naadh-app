@@ -43,6 +43,7 @@ dependencies:
   pdf: ^3.10.8
   archive: ^3.6.1
   audioplayers: ^6.0.0
+  mobile_scanner: ^7.4.2
 
 dev_dependencies:
   flutter_test:

@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
 class SessionStartScreen extends StatefulWidget {
-  const SessionStartScreen({
-    super.key,
-    required this.onSessionStarted,
-  });
+  const SessionStartScreen({super.key, required this.onSessionStarted});
 
   final void Function(String userName, String? accessToken) onSessionStarted;
 
@@ -53,10 +50,7 @@ class _SessionStartScreenState extends State<SessionStartScreen> {
                 const SizedBox(height: 24),
                 const Text(
                   'Welcome to Document Reader',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 const Text(

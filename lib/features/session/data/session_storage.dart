@@ -13,7 +13,10 @@ class SessionStorage {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setString(_userNameKey, userName);
-    await prefs.setBool(_connectedKey, false); // Never persist connected as true across restarts
+    await prefs.setBool(
+      _connectedKey,
+      false,
+    ); // Never persist connected as true across restarts
     await prefs.setInt(_pageCountKey, pageCount);
   }
 

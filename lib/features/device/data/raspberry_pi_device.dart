@@ -5,16 +5,18 @@ import 'services/pi_api_service.dart';
 
 class OcrFailureException implements Exception {
   final String message;
-  const OcrFailureException([this.message = 'No text detected in image. Please adjust lighting/position and try again.']);
+  const OcrFailureException([
+    this.message =
+        'No text detected in image. Please adjust lighting/position and try again.',
+  ]);
 
   @override
   String toString() => message;
 }
 
 class RaspberryPiDevice implements ReaderDevice {
-  RaspberryPiDevice({
-    PiApiService? apiService,
-  }) : _apiService = apiService ?? PiApiService();
+  RaspberryPiDevice({PiApiService? apiService})
+    : _apiService = apiService ?? PiApiService();
 
   final PiApiService _apiService;
 
@@ -66,15 +68,14 @@ class RaspberryPiDevice implements ReaderDevice {
         _accessToken = null;
         _controller.add(ReaderConnectionStatus.disconnected);
 
-        throw Exception(
-          result['message'] ?? 'Failed to start session',
-        );
+        throw Exception(result['message'] ?? 'Failed to start session');
       }
     } catch (e) {
       // If Pi server is stuck in APP_ACTIVE from an un-ended session (HTTP 409),
       // force end the orphaned session and retry once.
       final errStr = e.toString();
-      if (errStr.contains('409') || errStr.contains('being used by another user')) {
+      if (errStr.contains('409') ||
+          errStr.contains('being used by another user')) {
         try {
           await _apiService.endSession();
           await Future<void>.delayed(const Duration(milliseconds: 600));
@@ -107,7 +108,8 @@ class RaspberryPiDevice implements ReaderDevice {
     if (result['success'] != true) {
       if (result['reason'] == 'text_not_detected') {
         throw OcrFailureException(
-          result['message'] as String? ?? 'No text detected in image. Please try again.',
+          result['message'] as String? ??
+              'No text detected in image. Please try again.',
         );
       }
       throw Exception(
@@ -176,7 +178,8 @@ class RaspberryPiDevice implements ReaderDevice {
         final message = data['message'] as String?;
         if (reason == 'text_not_detected') {
           throw OcrFailureException(
-            message ?? 'No text detected in image. Please adjust lighting/position and try again.',
+            message ??
+                'No text detected in image. Please adjust lighting/position and try again.',
           );
         }
         throw Exception(message ?? 'Page $pageNumber processing failed on Pi');
@@ -202,9 +205,8 @@ class RaspberryPiDevice implements ReaderDevice {
 
       return captures
           .map(
-            (capture) => _apiService.getFullUrl(
-              capture['image_url'] as String?,
-            ),
+            (capture) =>
+                _apiService.getFullUrl(capture['image_url'] as String?),
           )
           .toList();
     } catch (_) {
@@ -230,9 +232,7 @@ class RaspberryPiDevice implements ReaderDevice {
     }
   }
 
-  Future<Map<String, dynamic>?> getCaptureDetails(
-    int pageNumber,
-  ) async {
+  Future<Map<String, dynamic>?> getCaptureDetails(int pageNumber) async {
     try {
       return await _apiService.getCaptureDetails(pageNumber);
     } catch (_) {
