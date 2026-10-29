@@ -16,36 +16,61 @@ class AppBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NavigationBar(
-      backgroundColor: Colors.white,
-      indicatorColor:
-          AppColors.lilac, // Purple/lilac highlight behind selected icon
-      selectedIndex: MainTab.values.indexOf(currentTab),
-      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-      animationDuration: const Duration(milliseconds: 300),
-      onDestinationSelected: (index) => onChanged(MainTab.values[index]),
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home, color: AppColors.purple),
-          label: 'Home',
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: theme.dividerTheme.color ??
+                (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+            width: 1.0,
+          ),
         ),
-        NavigationDestination(
-          icon: Icon(Icons.tune_outlined),
-          selectedIcon: Icon(Icons.tune, color: AppColors.purple),
-          label: 'Output',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.folder_outlined),
-          selectedIcon: Icon(Icons.folder, color: AppColors.purple),
-          label: 'Files',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          selectedIcon: Icon(Icons.person, color: AppColors.purple),
-          label: 'Profile',
-        ),
-      ],
+      ),
+      child: NavigationBar(
+        backgroundColor: theme.navigationBarTheme.backgroundColor,
+        indicatorColor: theme.navigationBarTheme.indicatorColor,
+        selectedIndex: MainTab.values.indexOf(currentTab),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        animationDuration: const Duration(milliseconds: 300),
+        onDestinationSelected: (index) => onChanged(MainTab.values[index]),
+        destinations: [
+          NavigationDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: Icon(
+              Icons.home,
+              color: isDark ? AppColors.purpleMid : AppColors.purple,
+            ),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.tune_outlined),
+            selectedIcon: Icon(
+              Icons.tune,
+              color: isDark ? AppColors.purpleMid : AppColors.purple,
+            ),
+            label: 'Output',
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.folder_outlined),
+            selectedIcon: Icon(
+              Icons.folder,
+              color: isDark ? AppColors.purpleMid : AppColors.purple,
+            ),
+            label: 'Files',
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.person_outline),
+            selectedIcon: Icon(
+              Icons.person,
+              color: isDark ? AppColors.purpleMid : AppColors.purple,
+            ),
+            label: 'Profile',
+          ),
+        ],
+      ),
     );
   }
 }

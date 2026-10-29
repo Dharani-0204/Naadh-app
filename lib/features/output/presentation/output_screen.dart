@@ -5,10 +5,10 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../widgets/output_device_sheet.dart';
 
-/// "Output" tab — output device selector.
+/// "Output" tab — output device selector and audio status.
 ///
-/// Results (image, text, summary) are shown in [DocumentResultsScreen]
-/// after processing. This tab is reserved for output device configuration.
+/// Processed document results are shown in DocumentResultsScreen.
+/// This tab configures audio output destinations (Speaker, Headphones, Bluetooth).
 class OutputScreen extends StatefulWidget {
   const OutputScreen({super.key});
 
@@ -21,6 +21,9 @@ class _OutputScreenState extends State<OutputScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -28,13 +31,45 @@ class _OutputScreenState extends State<OutputScreen> {
         AppCard(
           child: Row(
             children: [
-              Expanded(
-                child: Text(
-                  'Current output: $outputDevice',
-                  style: Theme.of(context).textTheme.bodyMedium,
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.purpleDarkTint
+                      : AppColors.purpleLightTint,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.volume_up_outlined,
+                  color: AppColors.purple,
+                  size: 24,
                 ),
               ),
-              TextButton(
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'AUDIO ROUTING',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
+                        color: AppColors.purple,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      outputDevice,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
                 onPressed: () async {
                   await showModalBottomSheet<void>(
                     context: context,
@@ -48,43 +83,36 @@ class _OutputScreenState extends State<OutputScreen> {
                     ),
                   );
                 },
-                child: const Text('Change'),
+                icon: const Icon(Icons.tune, size: 16),
+                label: const Text('Change'),
               ),
             ],
           ),
         ),
         const SizedBox(height: AppSpacing.md),
 
-        // Empty state — results appear in DocumentResultsScreen
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-          decoration: BoxDecoration(
-            color: AppColors.cloud.withValues(alpha: 0.35),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.gray, width: 0.6),
-          ),
+        // Information card
+        AppCard(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.library_books_outlined,
-                size: 40,
-                color: Colors.black38,
+                size: 44,
+                color: isDark ? AppColors.purpleMid : AppColors.purple,
               ),
               const SizedBox(height: 12),
               Text(
-                'No results yet',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                'Document Audio Ready',
+                style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: AppColors.charcoal,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
-                'Capture a document on the Home tab,\n'
-                'then tap Process to view results.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.black54,
+                'When you capture a document on the Home tab and tap "Process", your synthesized audio and AI summary will play through your selected audio device ($outputDevice).',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
                   height: 1.5,
                 ),
                 textAlign: TextAlign.center,

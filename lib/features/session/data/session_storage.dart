@@ -1,9 +1,13 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../auth/data/services/auth_service.dart';
+
 class SessionStorage {
   static const _userNameKey = 'alien_reader_user_name';
   static const _connectedKey = 'alien_reader_connected';
   static const _pageCountKey = 'alien_reader_page_count';
+
+  final AuthService _authService = AuthService();
 
   Future<void> saveSession({
     required String userName,
@@ -21,6 +25,10 @@ class SessionStorage {
   }
 
   Future<String?> getUserName() async {
+    final currentUser = await _authService.getCurrentUser();
+    if (currentUser != null && currentUser.username.isNotEmpty) {
+      return currentUser.username;
+    }
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_userNameKey);
   }
@@ -40,8 +48,8 @@ class SessionStorage {
   }
 
   Future<void> clearSession() async {
+    await _authService.logout();
     final prefs = await SharedPreferences.getInstance();
-
     await prefs.remove(_userNameKey);
     await prefs.remove(_connectedKey);
     await prefs.remove(_pageCountKey);

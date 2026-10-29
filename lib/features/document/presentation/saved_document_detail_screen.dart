@@ -102,7 +102,7 @@ class _SavedDocumentDetailScreenState extends State<SavedDocumentDetailScreen> {
       final zip = await _storage.createZip(widget.document);
       await _share.shareFile(
         zip,
-        subject: 'Alien Document Reader — ${widget.document.documentTitle}',
+        subject: 'Naadh — ${widget.document.documentTitle}',
       );
     } catch (e) {
       if (mounted) _snack('Share failed: $e', success: false);
@@ -424,24 +424,28 @@ class _MetaChip extends StatelessWidget {
     final m = date.minute.toString().padLeft(2, '0');
     final label = '${date.day} ${months[date.month - 1]} ${date.year} · $h:$m';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.cloud,
+        color: isDark ? AppColors.darkSurfaceElevated : AppColors.cloud,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.calendar_today_outlined,
             size: 14,
-            color: Colors.black45,
+            color: isDark ? AppColors.darkTextMuted : Colors.black45,
           ),
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? AppColors.darkTextMuted : Colors.black54,
+            ),
           ),
         ],
       ),
@@ -483,29 +487,34 @@ class _LocalImageCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             child: file.existsSync()
                 ? Image.file(file, fit: BoxFit.contain, width: double.infinity)
-                : Container(
-                    height: 160,
-                    color: AppColors.cloud,
-                    child: const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.image_not_supported_outlined,
-                            size: 32,
-                            color: Colors.black38,
+                : Builder(
+                    builder: (context) {
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      return Container(
+                        height: 160,
+                        color: isDark ? AppColors.darkSurfaceElevated : AppColors.cloud,
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.image_not_supported_outlined,
+                                size: 32,
+                                color: isDark ? AppColors.darkTextMuted : Colors.black38,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Image file not found',
+                                style: TextStyle(
+                                  color: isDark ? AppColors.darkTextMuted : Colors.black54,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Image file not found',
-                            style: TextStyle(
-                              color: Colors.black54,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    },
                   ),
           ),
         ],

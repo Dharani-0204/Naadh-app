@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_strings.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
+import '../core/theme/theme_controller.dart';
 import '../features/device/data/raspberry_pi_device.dart';
 import '../features/device/domain/reader_device.dart';
 import '../features/document/data/models/saved_document.dart';
@@ -20,17 +21,35 @@ import '../shared/widgets/alien_header.dart';
 import '../shared/widgets/app_bottom_nav.dart';
 import 'router.dart';
 
-class AlienReaderApp extends StatelessWidget {
+class AlienReaderApp extends StatefulWidget {
   const AlienReaderApp({super.key});
 
   @override
+  State<AlienReaderApp> createState() => _AlienReaderAppState();
+}
+
+class _AlienReaderAppState extends State<AlienReaderApp> {
+  @override
+  void initState() {
+    super.initState();
+    ThemeController.instance.init();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppStrings.appName,
-      theme: AppTheme.light,
-      onGenerateRoute: AppRouter.onGenerateRoute,
-      home: const AppShell(),
-      debugShowCheckedModeBanner: false,
+    return ListenableBuilder(
+      listenable: ThemeController.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          title: AppStrings.appName,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: ThemeController.instance.themeMode,
+          onGenerateRoute: AppRouter.onGenerateRoute,
+          home: const AppShell(),
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }
@@ -145,7 +164,7 @@ class _AppShellState extends State<AppShell> {
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Connected as $_userName')));
+      ).showSnackBar(SnackBar(content: Text('Connected to Naadh Reader as $_userName')));
     } catch (e) {
       if (!mounted) return;
 
@@ -155,7 +174,10 @@ class _AppShellState extends State<AppShell> {
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Connection failed: $e')));
+      ).showSnackBar(SnackBar(
+        content: Text('Connection failed: $e. You can retry anytime.'),
+        backgroundColor: AppColors.danger,
+      ));
     } finally {
       if (mounted) {
         setState(() {
@@ -345,12 +367,33 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  Future<void> _disconnect() async {
+  /// Disconnects from Raspberry Pi hardware and releases controls.
+  /// The user stays logged into the application.
+  Future<void> _disconnectFromPi() async {
     try {
       await _device.endSession();
     } catch (_) {
-      // Clear session locally even if disconnect request errors.
+      // Clear status locally even if disconnect request errors.
     }
+
+    if (!mounted) return;
+
+    setState(() {
+      _status = ReaderConnectionStatus.disconnected;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Disconnected from Raspberry Pi. Hardware controls released.'),
+      ),
+    );
+  }
+
+  /// Signs out of the application and clears session storage.
+  Future<void> _signOut() async {
+    try {
+      await _device.endSession();
+    } catch (_) {}
 
     await _sessionStorage.clearSession();
 
@@ -366,7 +409,7 @@ class _AppShellState extends State<AppShell> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Disconnected from Raspberry Pi')),
+      const SnackBar(content: Text('Signed out successfully.')),
     );
   }
 
@@ -412,10 +455,16 @@ class _AppShellState extends State<AppShell> {
           HomeScreen(
             status: _status,
             onConnect: _connect,
+            onDisconnect: _disconnectFromPi,
             onCapture: _capture,
             onFinish: _process,
             pageCount: _pageCount,
             ocrFailureMessage: _ocrFailureMessage,
+            userName: _userName,
+            onOpenFiles: () => setState(() => _tab = MainTab.files),
+            onOpenSettings: () =>
+                Navigator.of(context).pushNamed(AppRoutes.settings),
+            onOpenProfile: () => setState(() => _tab = MainTab.profile),
             onDeletePage: () async {
               if (_pageCount <= 0) return;
 
@@ -434,8 +483,10 @@ class _AppShellState extends State<AppShell> {
             userName: _userName,
             status: _status,
             pageCount: _pageCount,
-            sessionActive: _sessionStarted,
-            onDisconnect: _disconnect,
+            sessionActive: _status == ReaderConnectionStatus.connected ||
+                _status == ReaderConnectionStatus.busy,
+            onDisconnect: _disconnectFromPi,
+            onSignOut: _signOut,
           ),
         ],
       ),
@@ -451,41 +502,74 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _showConnectionDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showModalBottomSheet<void>(
       context: context,
+      showDragHandle: true,
       builder: (context) {
+        final isConnected = _status == ReaderConnectionStatus.connected ||
+            _status == ReaderConnectionStatus.busy;
+
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.memory, size: 48),
-                const SizedBox(height: 16),
+                Icon(
+                  Icons.memory,
+                  size: 44,
+                  color: isDark ? AppColors.purpleMid : AppColors.purple,
+                ),
+                const SizedBox(height: 12),
                 Text(
                   'Raspberry Pi Connection',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  _status == ReaderConnectionStatus.connected ||
-                          _status == ReaderConnectionStatus.busy
-                      ? 'Connected'
-                      : 'Disconnected',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color:
-                        _status == ReaderConnectionStatus.connected ||
-                            _status == ReaderConnectionStatus.busy
-                        ? Colors.green
-                        : Colors.red,
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isConnected
+                        ? AppColors.success.withValues(alpha: 0.12)
+                        : AppColors.danger.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isConnected ? Icons.check_circle : Icons.cloud_off,
+                        color: isConnected ? AppColors.success : AppColors.danger,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        isConnected ? 'Hardware Connected' : 'Disconnected',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isConnected ? AppColors.success : AppColors.danger,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text('User: ${_userName ?? 'Unknown'}'),
-                const SizedBox(height: 24),
+                Text(
+                  'Active User: ${_userName ?? 'Unknown'}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                  ),
+                ),
+                const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
+                  height: 48,
                   child: FilledButton.icon(
                     onPressed: () {
                       Navigator.pop(context);
@@ -494,31 +578,32 @@ class _AppShellState extends State<AppShell> {
                       ).pushNamed(AppRoutes.deviceQrScanner);
                     },
                     icon: const Icon(Icons.qr_code_scanner),
-                    label: const Text('ADD DEVICE (QR SETUP)'),
+                    label: const Text('SCAN WI-FI / SET UP DEVICE'),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.purple,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      Navigator.pop(context);
-                      await _disconnect();
-                    },
-                    icon: const Icon(Icons.link_off),
-                    label: const Text('DISCONNECT'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red.shade700,
-                      side: BorderSide(color: Colors.red.shade300),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                if (isConnected) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await _disconnectFromPi();
+                      },
+                      icon: const Icon(Icons.link_off),
+                      label: const Text('RELEASE PI / DISCONNECT'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.danger,
+                        side: const BorderSide(color: AppColors.danger),
+                      ),
                     ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 8),
                 TextButton.icon(
                   onPressed: () {
@@ -526,7 +611,7 @@ class _AppShellState extends State<AppShell> {
                     Navigator.of(context).pushNamed(AppRoutes.settings);
                   },
                   icon: const Icon(Icons.settings_outlined),
-                  label: const Text('All Settings'),
+                  label: const Text('All Settings & Preferences'),
                 ),
               ],
             ),

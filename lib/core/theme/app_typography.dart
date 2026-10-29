@@ -5,34 +5,78 @@ import 'app_colors.dart';
 
 abstract final class AppTypography {
   /// Inter — official Alien Innovations brand typeface, sourced from Google Fonts.
-  /// This matches the font used on the alieninnovations.in website.
-  static TextTheme get textTheme => GoogleFonts.interTextTheme(
+  /// Light text theme with high contrast dark text.
+  static TextTheme get lightTextTheme => GoogleFonts.interTextTheme(
     const TextTheme(
       headlineSmall: TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.w700,
-        color: AppColors.charcoal,
+        color: AppColors.lightText,
       ),
       titleLarge: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.w700,
-        color: AppColors.charcoal,
+        color: AppColors.lightText,
       ),
       titleMedium: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
-        color: AppColors.charcoal,
+        color: AppColors.lightText,
+      ),
+      bodyLarge: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+        color: AppColors.lightText,
       ),
       bodyMedium: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
-        color: AppColors.charcoal,
+        color: AppColors.lightText,
       ),
       bodySmall: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w500,
-        color: AppColors.charcoal,
+        color: AppColors.lightTextMuted,
       ),
     ),
   );
+
+  /// Dark text theme with high contrast light text.
+  static TextTheme get darkTextTheme => GoogleFonts.interTextTheme(
+    const TextTheme(
+      headlineSmall: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w700,
+        color: AppColors.darkText,
+      ),
+      titleLarge: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        color: AppColors.darkText,
+      ),
+      titleMedium: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: AppColors.darkText,
+      ),
+      bodyLarge: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+        color: AppColors.darkText,
+      ),
+      bodyMedium: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+        color: AppColors.darkText,
+      ),
+      bodySmall: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        color: AppColors.darkTextMuted,
+      ),
+    ),
+  );
+
+  /// Default text theme (preserves backwards compatibility).
+  static TextTheme get textTheme => lightTextTheme;
 }

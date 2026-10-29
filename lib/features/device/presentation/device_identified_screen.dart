@@ -7,12 +7,6 @@ import '../../../core/theme/app_spacing.dart';
 import '../data/models/device_qr_payload.dart';
 
 /// Screen displayed after successfully scanning and validating a Naadh device QR code.
-///
-/// Communicates:
-/// - The detected device identifier.
-/// - Clear, honest onboarding status: "Device identified — setup not completed".
-/// - Explanation that Wi-Fi hotspot provisioning will be available in the next release.
-/// - Accessible navigation to return to the main application or rescan.
 class DeviceIdentifiedScreen extends StatelessWidget {
   const DeviceIdentifiedScreen({super.key, required this.payload});
 
@@ -20,12 +14,15 @@ class DeviceIdentifiedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Device Setup'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.charcoal,
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -39,44 +36,50 @@ class DeviceIdentifiedScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildProgressStepper(context),
+              _buildProgressStepper(context, isDark),
               const SizedBox(height: AppSpacing.lg),
-              _buildDeviceIdentificationCard(context),
+              _buildDeviceIdentificationCard(context, isDark),
               const SizedBox(height: AppSpacing.lg),
-              _buildStatusCard(context),
+              _buildStatusCard(context, isDark),
               const SizedBox(height: AppSpacing.lg),
-              _buildNextStepNotice(context),
+              _buildNextStepNotice(context, isDark),
               const SizedBox(height: AppSpacing.xl),
-              FilledButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pushNamed(
-                    AppRoutes.wifiOnboarding,
-                    arguments: payload.deviceId,
-                  );
-                },
-                icon: const Icon(Icons.wifi),
-                label: const Text('CONFIGURE WI-FI'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.purple,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
+              SizedBox(
+                height: 50,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pushNamed(
+                      AppRoutes.wifiOnboarding,
+                      arguments: payload.deviceId,
+                    );
+                  },
+                  icon: const Icon(Icons.wifi),
+                  label: const Text('CONFIGURE WI-FI'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.purple,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              OutlinedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.charcoal,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: const BorderSide(color: AppColors.gray),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isDark ? AppColors.darkText : AppColors.charcoal,
+                    side: BorderSide(
+                      color: isDark ? AppColors.darkBorder : AppColors.gray,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppShapes.buttonRadius),
+                    ),
                   ),
+                  child: const Text('Cancel / Return to App'),
                 ),
-                child: const Text('Cancel / Return to App'),
               ),
             ],
           ),
@@ -85,7 +88,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProgressStepper(BuildContext context) {
+  Widget _buildProgressStepper(BuildContext context, bool isDark) {
     final steps = [
       _StepInfo('Add Device', isComplete: true, isActive: false),
       _StepInfo('Scan QR', isComplete: true, isActive: false),
@@ -103,8 +106,13 @@ class DeviceIdentifiedScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
-          color: AppColors.cloud.withValues(alpha: 0.5),
+          color: isDark
+              ? AppColors.darkSurfaceElevated
+              : AppColors.cloud.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(AppShapes.cardRadius),
+          border: Border.all(
+            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -125,7 +133,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                               ? AppColors.success
                               : (step.isActive
                                     ? AppColors.purple
-                                    : AppColors.gray),
+                                    : (isDark ? Colors.white12 : AppColors.gray)),
                           child: Icon(
                             step.isComplete
                                 ? Icons.check
@@ -146,8 +154,8 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                                 ? FontWeight.bold
                                 : FontWeight.w500,
                             color: step.isActive
-                                ? AppColors.purple
-                                : AppColors.charcoal,
+                                ? (isDark ? AppColors.purpleMid : AppColors.purple)
+                                : (isDark ? AppColors.darkTextMuted : AppColors.charcoal),
                           ),
                         ),
                       ],
@@ -159,7 +167,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                       height: 2,
                       color: steps[idx].isComplete
                           ? AppColors.success
-                          : AppColors.gray,
+                          : (isDark ? Colors.white12 : AppColors.gray),
                     ),
                 ],
               ),
@@ -170,14 +178,16 @@ class DeviceIdentifiedScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDeviceIdentificationCard(BuildContext context) {
+  Widget _buildDeviceIdentificationCard(BuildContext context, bool isDark) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(AppShapes.cardRadius),
         border: Border.all(
-          color: AppColors.purple.withValues(alpha: 0.3),
+          color: isDark
+              ? AppColors.purpleMid.withValues(alpha: 0.4)
+              : AppColors.purple.withValues(alpha: 0.3),
           width: 1.5,
         ),
         boxShadow: [
@@ -193,13 +203,15 @@ class DeviceIdentifiedScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.purple.withValues(alpha: 0.1),
+              color: isDark
+                  ? AppColors.purpleDarkTint
+                  : AppColors.purple.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.qr_code_2,
               size: 48,
-              color: AppColors.purple,
+              color: isDark ? AppColors.purpleMid : AppColors.purple,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -207,24 +219,26 @@ class DeviceIdentifiedScreen extends StatelessWidget {
             'Device Detected',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: AppColors.charcoal,
+              color: isDark ? AppColors.darkText : AppColors.charcoal,
             ),
           ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: AppColors.cloud,
+              color: isDark ? AppColors.darkSurfaceElevated : AppColors.cloud,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.gray),
+              border: Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.gray,
+              ),
             ),
             child: SelectableText(
               payload.deviceId,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.2,
-                color: AppColors.purple,
+                color: isDark ? AppColors.purpleMid : AppColors.purple,
               ),
             ),
           ),
@@ -236,14 +250,24 @@ class DeviceIdentifiedScreen extends StatelessWidget {
                 if (payload.model != null)
                   Chip(
                     label: Text('Model: ${payload.model}'),
-                    backgroundColor: AppColors.cloud,
-                    labelStyle: const TextStyle(fontSize: 11),
+                    backgroundColor: isDark
+                        ? AppColors.darkSurfaceElevated
+                        : AppColors.cloud,
+                    labelStyle: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? AppColors.darkText : AppColors.charcoal,
+                    ),
                   ),
                 if (payload.version != null)
                   Chip(
                     label: Text('v${payload.version}'),
-                    backgroundColor: AppColors.cloud,
-                    labelStyle: const TextStyle(fontSize: 11),
+                    backgroundColor: isDark
+                        ? AppColors.darkSurfaceElevated
+                        : AppColors.cloud,
+                    labelStyle: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? AppColors.darkText : AppColors.charcoal,
+                    ),
                   ),
               ],
             ),
@@ -253,7 +277,7 @@ class DeviceIdentifiedScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusCard(BuildContext context) {
+  Widget _buildStatusCard(BuildContext context, bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -270,19 +294,21 @@ class DeviceIdentifiedScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Device identified — setup not completed',
                   style: TextStyle(
-                    color: AppColors.charcoal,
+                    color: isDark ? AppColors.darkText : AppColors.charcoal,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'The device identifier has been verified from the QR code. The device has not yet joined your Wi-Fi network and is not currently communicating with this app.',
+                  'The device identifier has been verified from the QR code. Tap "Configure Wi-Fi" to connect your Naadh reader to your local wireless network.',
                   style: TextStyle(
-                    color: AppColors.charcoal.withValues(alpha: 0.8),
+                    color: isDark
+                        ? AppColors.darkTextMuted
+                        : AppColors.charcoal.withValues(alpha: 0.8),
                     fontSize: 12.5,
                     height: 1.35,
                   ),
@@ -295,40 +321,44 @@ class DeviceIdentifiedScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNextStepNotice(BuildContext context) {
+  Widget _buildNextStepNotice(BuildContext context, bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cloud.withValues(alpha: 0.5),
+        color: isDark
+            ? AppColors.darkSurfaceElevated
+            : AppColors.cloud.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(AppShapes.cardRadius),
-        border: Border.all(color: AppColors.gray),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.gray,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.network_wifi,
                 size: 20,
-                color: AppColors.purpleMid,
+                color: isDark ? AppColors.purpleMid : AppColors.purpleMid,
               ),
               const SizedBox(width: 8),
               Text(
                 'Next Step: Wi-Fi Provisioning',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: AppColors.charcoal,
+                  color: isDark ? AppColors.darkText : AppColors.charcoal,
                 ),
               ),
             ],
           ),
           const Divider(height: 20),
-          const Text(
+          Text(
             'Authenticate with the device-specific PIN/secret printed on your reader, select your local Wi-Fi network, and securely transfer credentials to the device.',
             style: TextStyle(
               fontSize: 12.5,
-              color: Colors.black54,
+              color: isDark ? AppColors.darkTextMuted : Colors.black54,
               height: 1.4,
             ),
           ),

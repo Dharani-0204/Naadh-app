@@ -6,18 +6,13 @@ import '../../../app/router.dart';
 import '../../../core/constants/pi_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/theme_controller.dart';
+import '../../../features/auth/data/models/user_account.dart';
+import '../../../features/auth/data/services/auth_service.dart';
 import '../../../features/device/domain/reader_device.dart';
 import '../../../features/document/data/services/document_storage_service.dart';
 import '../../../shared/widgets/app_card.dart';
 
-/// Profile screen — displays real user, device, and usage information.
-///
-/// All values come from:
-/// - [userName] / [status] / [pageCount] passed from [AppShell]
-/// - [DocumentStorageService] for saved document stats
-/// - [PiConfig] for the Raspberry Pi IP address
-///
-/// Pull down to refresh usage statistics.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
     super.key,
@@ -26,22 +21,15 @@ class ProfileScreen extends StatefulWidget {
     this.pageCount = 0,
     this.sessionActive = false,
     this.onDisconnect,
+    this.onSignOut,
   });
 
-  /// The display name entered by the user at session start.
   final String? userName;
-
-  /// Current Pi connection status.
   final ReaderConnectionStatus status;
-
-  /// Number of pages captured in the current session.
   final int pageCount;
-
-  /// Whether a Pi session is currently active.
   final bool sessionActive;
-
-  /// Callback to end the Pi session and disconnect.
   final VoidCallback? onDisconnect;
+  final VoidCallback? onSignOut;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -49,18 +37,26 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _storage = DocumentStorageService();
+  final _authService = AuthService();
 
   int _savedDocCount = 0;
   int _storageTotalBytes = 0;
   bool _statsLoading = true;
+  UserAccount? _currentUser;
 
   @override
   void initState() {
     super.initState();
     _loadStats();
+    _loadUser();
   }
 
-  // ─── Load real usage stats ────────────────────────────────────────
+  Future<void> _loadUser() async {
+    final user = await _authService.getCurrentUser();
+    if (mounted) {
+      setState(() => _currentUser = user);
+    }
+  }
 
   Future<void> _loadStats() async {
     setState(() => _statsLoading = true);
@@ -94,14 +90,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _statsLoading = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) setState(() => _statsLoading = false);
     }
   }
 
-  // ─── Helpers ──────────────────────────────────────────────────────
-
-  /// Extracts just the host (IP) from [PiConfig.baseUrl].
   String get _piIpAddress {
     try {
       return Uri.parse(PiConfig.baseUrl).host;
@@ -126,7 +119,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       case ReaderConnectionStatus.connecting:
         return 'Connecting…';
       case ReaderConnectionStatus.busy:
-        return 'Processing';
+        return 'App Active';
       case ReaderConnectionStatus.disconnected:
         return 'Not Connected';
     }
@@ -135,21 +128,128 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Color get _statusColor {
     switch (widget.status) {
       case ReaderConnectionStatus.connected:
-        return Colors.green.shade600;
+        return AppColors.success;
       case ReaderConnectionStatus.connecting:
       case ReaderConnectionStatus.busy:
-        return Colors.orange.shade600;
+        return AppColors.orange;
       case ReaderConnectionStatus.disconnected:
-        return Colors.red.shade400;
+        return AppColors.danger;
     }
   }
 
-  // ─── Build ────────────────────────────────────────────────────────
+  void _showThemeSelector() {
+    final current = ThemeController.instance.themeMode;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Appearance & Theme',
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.brightness_auto),
+                  title: const Text('System Default'),
+                  subtitle: const Text('Matches your phone display settings'),
+                  trailing: current == ThemeMode.system
+                      ? const Icon(Icons.check, color: AppColors.purple)
+                      : null,
+                  onTap: () async {
+                    await ThemeController.instance.setThemeMode(ThemeMode.system);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    setState(() {});
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.light_mode_outlined),
+                  title: const Text('Light Theme'),
+                  subtitle: const Text('Clean white background with purple accents'),
+                  trailing: current == ThemeMode.light
+                      ? const Icon(Icons.check, color: AppColors.purple)
+                      : null,
+                  onTap: () async {
+                    await ThemeController.instance.setThemeMode(ThemeMode.light);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    setState(() {});
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.dark_mode_outlined),
+                  title: const Text('Dark Theme'),
+                  subtitle: const Text('Charcoal background with purple accents'),
+                  trailing: current == ThemeMode.dark
+                      ? const Icon(Icons.check, color: AppColors.purple)
+                      : null,
+                  onTap: () async {
+                    await ThemeController.instance.setThemeMode(ThemeMode.dark);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    setState(() {});
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSignOutDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text(
+          'Are you sure you want to sign out? You will need to log in again to access Naadh.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              widget.onSignOut?.call();
+            },
+            child: const Text('SIGN OUT'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final onSurface = theme.colorScheme.onSurface;
+
+    final themeModeTitle = switch (ThemeController.instance.themeMode) {
+      ThemeMode.system => 'System Default',
+      ThemeMode.light => 'Light Theme',
+      ThemeMode.dark => 'Dark Theme',
+    };
+
     return RefreshIndicator(
-      onRefresh: _loadStats,
+      onRefresh: () async {
+        await _loadStats();
+        await _loadUser();
+      },
       color: AppColors.purple,
       child: ListView(
         padding: const EdgeInsets.all(16),
@@ -160,7 +260,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 CircleAvatar(
                   radius: 36,
-                  backgroundColor: AppColors.purple.withValues(alpha: 0.12),
+                  backgroundColor: isDark
+                      ? AppColors.purpleDarkTint
+                      : AppColors.purpleLightTint,
                   child: const Icon(
                     Icons.person_outline,
                     size: 38,
@@ -169,14 +271,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  widget.userName?.isNotEmpty == true
-                      ? widget.userName!
-                      : 'Guest',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  _currentUser?.username ??
+                      (widget.userName?.isNotEmpty == true
+                          ? widget.userName!
+                          : 'Guest'),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const SizedBox(height: 4),
+                if (_currentUser?.email != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    _currentUser!.email!,
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+                if (_currentUser?.phone != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    _currentUser!.phone!,
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -185,6 +308,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   decoration: BoxDecoration(
                     color: _statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: _statusColor.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Text(
                     _statusLabel,
@@ -200,31 +326,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: AppSpacing.md),
 
+          // ── Appearance / Theme Setting Card ───────────────────────
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.palette_outlined,
+                      size: 20,
+                      color: isDark ? AppColors.purpleMid : AppColors.purple,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Appearance',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 20),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                    color: AppColors.purple,
+                  ),
+                  title: const Text('Theme Mode'),
+                  subtitle: Text(themeModeTitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _showThemeSelector,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+
           // ── Device Information ────────────────────────────────────
           AppCard(
             child: _InfoSection(
               title: 'Device Information',
               icon: Icons.memory_outlined,
               rows: [
-                _InfoRow(label: 'Device', value: 'Raspberry Pi Alien Reader'),
-                _InfoRow(label: 'IP Address', value: _piIpAddress),
+                _InfoRow(label: 'Device', value: 'Raspberry Pi Naadh Reader'),
+                _InfoRow(label: 'Host / IP', value: _piIpAddress),
                 _InfoRow(
                   label: 'Status',
                   value: _statusLabel,
                   valueColor: _statusColor,
                 ),
                 _InfoRow(
-                  label: 'Session',
-                  value: widget.sessionActive ? 'Active' : 'Inactive',
+                  label: 'Hardware Control',
+                  value: widget.sessionActive ? 'App Controlled' : 'Standalone Mode',
                   valueColor: widget.sessionActive
-                      ? Colors.green.shade600
-                      : Colors.black54,
+                      ? AppColors.success
+                      : (isDark ? AppColors.darkTextMuted : Colors.black54),
                 ),
               ],
               bottomAction: Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: SizedBox(
                   width: double.infinity,
+                  height: 48,
                   child: OutlinedButton.icon(
                     onPressed: () {
                       Navigator.of(
@@ -236,7 +401,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.purple,
                       side: const BorderSide(color: AppColors.purple),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
                 ),
@@ -248,7 +412,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // ── Usage ─────────────────────────────────────────────────
           AppCard(
             child: _InfoSection(
-              title: 'Usage',
+              title: 'Usage & Storage',
               icon: Icons.bar_chart_outlined,
               trailing: _statsLoading
                   ? const SizedBox(
@@ -262,7 +426,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   : null,
               rows: [
                 _InfoRow(label: 'Documents Saved', value: '$_savedDocCount'),
-                _InfoRow(label: 'Pages Scanned', value: '${widget.pageCount}'),
+                _InfoRow(label: 'Pages in Session', value: '${widget.pageCount}'),
                 _InfoRow(
                   label: 'Storage Used',
                   value: _statsLoading ? '…' : _formatBytes(_storageTotalBytes),
@@ -270,29 +434,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          if (widget.onDisconnect != null) ...[
+
+          // ── Device Disconnect Button (if connected) ───────────────
+          if (widget.onDisconnect != null && widget.sessionActive) ...[
             const SizedBox(height: AppSpacing.md),
             SizedBox(
               width: double.infinity,
+              height: 48,
               child: OutlinedButton.icon(
                 onPressed: widget.onDisconnect,
                 icon: const Icon(Icons.link_off),
                 label: const Text('DISCONNECT FROM DEVICE'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red.shade600,
-                  side: BorderSide(color: Colors.red.shade300),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  foregroundColor: AppColors.danger,
+                  side: const BorderSide(color: AppColors.danger),
                 ),
               ),
             ),
           ],
-          const SizedBox(height: AppSpacing.sm),
 
-          // ── Pull to refresh hint ───────────────────────────────────
-          const Center(
+          // ── Sign Out Button ───────────────────────────────────────
+          const SizedBox(height: AppSpacing.md),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: _showSignOutDialog,
+              icon: const Icon(Icons.logout),
+              label: const Text('LOG OUT OF ACCOUNT'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: isDark ? AppColors.darkTextMuted : AppColors.charcoal,
+                side: BorderSide(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.lg),
+          Center(
             child: Text(
-              'Pull down to refresh stats',
-              style: TextStyle(fontSize: 11, color: Colors.black38),
+              'Pull down to refresh stats • Version 1.0.0',
+              style: TextStyle(
+                fontSize: 12,
+                color: onSurface.withValues(alpha: 0.5),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -301,10 +487,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Info section card body
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _InfoSection extends StatelessWidget {
   const _InfoSection({
@@ -323,20 +505,26 @@ class _InfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
         Row(
           children: [
-            Icon(icon, size: 18, color: AppColors.purpleMid),
+            Icon(icon, size: 20, color: isDark ? AppColors.purpleMid : AppColors.purple),
             const SizedBox(width: 8),
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             if (trailing != null) ...[const Spacer(), trailing!],
           ],
         ),
         const Divider(height: 20),
-        // Rows
         ...rows.map(
           (row) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -344,10 +532,13 @@ class _InfoSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  width: 120,
+                  width: 130,
                   child: Text(
                     row.label,
-                    style: const TextStyle(color: Colors.black54, fontSize: 13),
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
                 Expanded(
@@ -356,7 +547,7 @@ class _InfoSection extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: row.valueColor,
+                      color: row.valueColor ?? (isDark ? AppColors.darkText : AppColors.charcoal),
                     ),
                   ),
                 ),
@@ -369,10 +560,6 @@ class _InfoSection extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Single labeled row
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _InfoRow {
   const _InfoRow({required this.label, required this.value, this.valueColor});

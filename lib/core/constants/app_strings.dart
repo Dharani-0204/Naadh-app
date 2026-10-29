@@ -1,4 +1,4 @@
 abstract final class AppStrings {
-  static const appName = 'Document Reader';
-  static const brandName = 'Document Reader';
+  static const appName = 'Naadh';
+  static const brandName = 'Naadh';
 }

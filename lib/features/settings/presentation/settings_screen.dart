@@ -1,15 +1,169 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/router.dart';
+import '../../../core/constants/pi_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/theme_controller.dart';
 import '../../../shared/widgets/app_card.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
+  void _showThemeDialog(BuildContext context) {
+    final current = ThemeController.instance.themeMode;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Appearance & Theme',
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.brightness_auto),
+                  title: const Text('System Default'),
+                  subtitle: const Text('Adapts to phone system theme'),
+                  trailing: current == ThemeMode.system
+                      ? const Icon(Icons.check, color: AppColors.purple)
+                      : null,
+                  onTap: () async {
+                    await ThemeController.instance.setThemeMode(ThemeMode.system);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.light_mode_outlined),
+                  title: const Text('Light Theme'),
+                  subtitle: const Text('Clean white background with purple accents'),
+                  trailing: current == ThemeMode.light
+                      ? const Icon(Icons.check, color: AppColors.purple)
+                      : null,
+                  onTap: () async {
+                    await ThemeController.instance.setThemeMode(ThemeMode.light);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.dark_mode_outlined),
+                  title: const Text('Dark Theme'),
+                  subtitle: const Text('Rich charcoal background with purple accents'),
+                  trailing: current == ThemeMode.dark
+                      ? const Icon(Icons.check, color: AppColors.purple)
+                      : null,
+                  onTap: () async {
+                    await ThemeController.instance.setThemeMode(ThemeMode.dark);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/images/alien_innovations_logo.png',
+              width: 32,
+              height: 32,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(width: 10),
+            const Text('Alien Innovations'),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Naadh',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            SizedBox(height: 6),
+            Text('Version: 1.0.0+1 (Production Ready)'),
+            SizedBox(height: 12),
+            Text(
+              'AI-powered document capture, OCR text extraction, multi-lingual audio synthesis, and intelligent document summarization for the visually impaired and modern readers.',
+              style: TextStyle(fontSize: 13, height: 1.4),
+            ),
+            SizedBox(height: 12),
+            Text(
+              '© 2026 Alien Innovations. All rights reserved.',
+              style: TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('CLOSE'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeviceInfoDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.memory, color: AppColors.purple),
+            SizedBox(width: 8),
+            Text('Device Info'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Model: Naadh Smart Reader Pi',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            Text('Base URL: ${PiConfig.baseUrl}'),
+            const SizedBox(height: 6),
+            Text('Camera Stream: ${PiConfig.streamUrl}'),
+            const SizedBox(height: 6),
+            const Text('Firmware: v2.4-production'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('CLOSE'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
@@ -19,17 +173,24 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('DEVICE', style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  'DEVICE',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 ListTile(
-                  dense: true,
                   contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppColors.lilac,
-                    child: Icon(
+                  leading: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: isDark
+                        ? AppColors.purpleDarkTint
+                        : AppColors.purpleLightTint,
+                    child: const Icon(
                       Icons.qr_code_scanner,
-                      size: 18,
+                      size: 20,
                       color: AppColors.purple,
                     ),
                   ),
@@ -53,81 +214,159 @@ class SettingsScreen extends StatelessWidget {
                   },
                 ),
                 const Divider(height: 16),
-                ...const [
-                  'Device Information',
-                  'Connection',
-                  'Reconnect',
-                  'Firmware Information',
-                ].map(
-                  (row) => ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(row),
-                    trailing: const Icon(Icons.chevron_right),
-                  ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.info_outline, size: 22),
+                  title: const Text('Device Information'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showDeviceInfoDialog(context),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.wifi, size: 22),
+                  title: const Text('Wi-Fi Configuration'),
+                  subtitle: const Text('Configure reader wireless network'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).pushNamed(AppRoutes.deviceQrScanner);
+                  },
                 ),
               ],
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          const _SettingSection(
-            title: 'SCANNING',
-            rows: ['Scan Preferences', 'Page Detection', 'Capture Preferences'],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          const _SettingSection(
-            title: 'AUDIO',
-            rows: [
-              'Default Output',
-              'Voice',
-              'Speech Speed',
-              'Playback Settings',
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          const _SettingSection(
-            title: 'APPLICATION',
-            rows: ['Theme', 'Language', 'Notifications', 'Storage'],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          const _SettingSection(
-            title: 'ABOUT',
-            rows: [
-              'About Alien Innovations',
-              'Version',
-              'Help',
-              'Privacy',
-              'Terms',
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
 
-class _SettingSection extends StatelessWidget {
-  const _SettingSection({required this.title, required this.rows});
-
-  final String title;
-  final List<String> rows;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 8),
-          ...rows.map(
-            (row) => ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: Text(row),
-              trailing: const Icon(Icons.chevron_right),
+          // APPEARANCE SECTION
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'APPEARANCE & THEME',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                    size: 22,
+                    color: AppColors.purple,
+                  ),
+                  title: const Text('Theme Mode'),
+                  subtitle: Text(
+                    switch (ThemeController.instance.themeMode) {
+                      ThemeMode.system => 'System Default',
+                      ThemeMode.light => 'Light Theme',
+                      ThemeMode.dark => 'Dark Theme',
+                    },
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showThemeDialog(context),
+                ),
+              ],
             ),
           ),
+          const SizedBox(height: AppSpacing.md),
+
+          // SCANNING SECTION
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'SCANNING & PROCESSING',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.camera_alt_outlined, size: 22),
+                  title: const Text('Capture Preferences'),
+                  subtitle: const Text('Multi-page delay and framing guides'),
+                  trailing: const Icon(Icons.chevron_right),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.text_snippet_outlined, size: 22),
+                  title: const Text('OCR Recognition'),
+                  subtitle: const Text('Language: English (US)'),
+                  trailing: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // AUDIO SECTION
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AUDIO & SYNTHESIS',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.volume_up_outlined, size: 22),
+                  title: const Text('Text-to-Speech Output'),
+                  subtitle: const Text('Phone Speaker / Headphones'),
+                  trailing: const Icon(Icons.chevron_right),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.speed_outlined, size: 22),
+                  title: const Text('Speech Rate'),
+                  subtitle: const Text('1.0x (Normal)'),
+                  trailing: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // ABOUT SECTION
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ABOUT',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.business_outlined, size: 22),
+                  title: const Text('About Alien Innovations'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showAboutDialog(context),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.shield_outlined, size: 22),
+                  title: const Text('Privacy & Security'),
+                  subtitle: const Text('Credentials stored encrypted locally'),
+                  trailing: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
         ],
       ),
     );

@@ -369,11 +369,11 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
         _showExitConfirmationDialog();
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           title: const Text('Wi-Fi Setup'),
-          backgroundColor: Colors.white,
-          foregroundColor: AppColors.charcoal,
+          backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+          foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.close),
@@ -1047,7 +1047,7 @@ class _WifiOnboardingScreenState extends State<WifiOnboardingScreen>
               const Text(
                 '1. Ensure your phone reconnects to your home Wi-Fi network.\n'
                 '2. The reader is saved in your device list.\n'
-                '3. Open the Document Reader and tap Connect to begin scanning.',
+                '3. Open Naadh and tap Connect to begin scanning.',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.black87,

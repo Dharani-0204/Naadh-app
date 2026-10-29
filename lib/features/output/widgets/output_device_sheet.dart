@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
+
 class OutputDeviceSheet extends StatelessWidget {
   const OutputDeviceSheet({
     super.key,
@@ -20,18 +22,22 @@ class OutputDeviceSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Output Device',
-              style: Theme.of(context).textTheme.titleMedium,
+              'Select Audio Output Device',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             ...devices.map(
               (device) => ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -40,12 +46,17 @@ class OutputDeviceSheet extends StatelessWidget {
                   selected == device
                       ? Icons.check_circle
                       : Icons.radio_button_unchecked,
+                  color: selected == device ? AppColors.purple : null,
                 ),
                 onTap: () => onSelected(device),
               ),
             ),
-            const Text(
-              'Mock UI state only. Real Bluetooth and Raspberry Pi speaker routing will be integrated later.',
+            const SizedBox(height: 8),
+            Text(
+              'Select your preferred speaker or connected Bluetooth headset for TTS audio playback.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
             ),
           ],
         ),

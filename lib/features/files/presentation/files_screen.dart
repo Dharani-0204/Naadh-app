@@ -220,7 +220,6 @@ class _FilesScreenState extends State<FilesScreen> {
                       ? 'Search saved documents'
                       : 'Search session captures',
                   leading: const Icon(Icons.search),
-                  onTap: () {},
                 ),
               ),
               const SizedBox(width: 8),
@@ -336,40 +335,57 @@ class _FilesScreenState extends State<FilesScreen> {
 
   // ─── Common state widgets ─────────────────────────────────────────
 
-  Widget _loadingWidget(String msg) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const CircularProgressIndicator(color: AppColors.purple),
-        const SizedBox(height: 16),
-        Text(msg, style: const TextStyle(color: Colors.black54)),
-      ],
-    ),
-  );
-
-  Widget _errorWidget(String error, VoidCallback retry) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(24),
+  Widget _loadingWidget(String msg) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.cloud_off_outlined, size: 40, color: Colors.black38),
-          const SizedBox(height: 12),
-          Text(
-            error,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.black54),
-          ),
+          const CircularProgressIndicator(color: AppColors.purple),
           const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: retry,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
+          Text(
+            msg,
+            style: TextStyle(
+              color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+            ),
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
+
+  Widget _errorWidget(String error, VoidCallback retry) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.cloud_off_outlined,
+              size: 40,
+              color: isDark ? AppColors.darkTextMuted : Colors.black38,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+              ),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: retry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -405,6 +421,7 @@ class _SavedDocCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final d = document.captureDate;
     final h = d.hour.toString().padLeft(2, '0');
     final m = d.minute.toString().padLeft(2, '0');
@@ -425,7 +442,7 @@ class _SavedDocCard extends StatelessWidget {
                 child: SizedBox(
                   width: 64,
                   height: 64,
-                  child: _buildThumbnail(document.imagePath),
+                  child: _buildThumbnail(context, document.imagePath),
                 ),
               ),
               const SizedBox(width: 14),
@@ -446,17 +463,17 @@ class _SavedDocCard extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       dateStr,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: Colors.black54,
+                        color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       document.textPreview,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(color: Colors.black54),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -464,7 +481,10 @@ class _SavedDocCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(Icons.chevron_right, color: Colors.black38),
+              Icon(
+                Icons.chevron_right,
+                color: isDark ? AppColors.darkTextMuted : Colors.black38,
+              ),
             ],
           ),
         ),
@@ -472,7 +492,8 @@ class _SavedDocCard extends StatelessWidget {
     );
   }
 
-  Widget _buildThumbnail(String? imagePath) {
+  Widget _buildThumbnail(BuildContext context, String? imagePath) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (imagePath != null) {
       final f = File(imagePath);
       if (f.existsSync()) {
@@ -480,11 +501,11 @@ class _SavedDocCard extends StatelessWidget {
       }
     }
     return Container(
-      color: AppColors.cloud,
+      color: isDark ? AppColors.purpleDarkTint : AppColors.purpleLightTint,
       child: const Center(
         child: Icon(
           Icons.description_outlined,
-          color: Colors.black38,
+          color: AppColors.purple,
           size: 26,
         ),
       ),
@@ -509,6 +530,8 @@ class _SessionCaptureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -527,13 +550,13 @@ class _SessionCaptureCard extends StatelessWidget {
                           imageUrl,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
-                              _placeholder(),
+                              _placeholder(context),
                           loadingBuilder: (context, child, progress) {
                             if (progress == null) return child;
-                            return _placeholder();
+                            return _placeholder(context);
                           },
                         )
-                      : _placeholder(),
+                      : _placeholder(context),
                 ),
               ),
               const SizedBox(width: 14),
@@ -550,14 +573,17 @@ class _SessionCaptureCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'Tap to view OCR text and AI summary',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(color: Colors.black54),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.black38),
+              Icon(
+                Icons.chevron_right,
+                color: isDark ? AppColors.darkTextMuted : Colors.black38,
+              ),
             ],
           ),
         ),
@@ -565,10 +591,17 @@ class _SessionCaptureCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholder() => Container(
-    color: AppColors.cloud,
-    child: const Center(
-      child: Icon(Icons.image_outlined, color: Colors.black38, size: 24),
-    ),
-  );
+  Widget _placeholder(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      color: isDark ? AppColors.darkSurfaceElevated : AppColors.cloud,
+      child: Center(
+        child: Icon(
+          Icons.image_outlined,
+          color: isDark ? AppColors.darkTextMuted : Colors.black38,
+          size: 24,
+        ),
+      ),
+    );
+  }
 }

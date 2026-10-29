@@ -11,12 +11,16 @@ class AlienHeader extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.appBarTheme.backgroundColor,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       titleSpacing: 16,
       title: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Image.asset(
             'assets/images/alien_innovations_logo.png',
@@ -30,7 +34,7 @@ class AlienHeader extends StatelessWidget implements PreferredSizeWidget {
             style: GoogleFonts.inter(
               fontSize: 17,
               fontWeight: FontWeight.w700,
-              color: AppColors.purple,
+              color: isDark ? AppColors.purpleMid : AppColors.purple,
               letterSpacing: -0.2,
             ),
           ),
@@ -41,9 +45,10 @@ class AlienHeader extends StatelessWidget implements PreferredSizeWidget {
           padding: const EdgeInsets.only(right: 8),
           child: IconButton(
             onPressed: onOpenSettings,
-            icon: const Icon(
+            tooltip: 'Settings & Device Connections',
+            icon: Icon(
               Icons.settings_outlined,
-              color: AppColors.charcoal,
+              color: isDark ? AppColors.darkText : AppColors.charcoal,
               size: 24,
             ),
           ),
@@ -54,7 +59,8 @@ class AlienHeader extends StatelessWidget implements PreferredSizeWidget {
         child: Divider(
           height: 1,
           thickness: 1,
-          color: Colors.black.withValues(alpha: 0.08),
+          color: theme.dividerTheme.color ??
+              (isDark ? AppColors.darkBorder : AppColors.lightBorder),
         ),
       ),
     );

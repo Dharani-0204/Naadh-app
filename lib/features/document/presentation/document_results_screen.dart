@@ -270,7 +270,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
           captureDate: now,
         );
       }
-      await _share.shareFile(file, subject: 'Alien Document Reader');
+      await _share.shareFile(file, subject: 'Naadh');
     } catch (e) {
       if (mounted) _snack('Share failed: $e', success: false);
     }
@@ -287,7 +287,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
         if (localPath != null && File(localPath).existsSync()) {
           await _share.shareFile(
             File(localPath),
-            subject: 'Alien Document Reader Audio',
+            subject: 'Naadh Audio',
           );
           return;
         }
@@ -305,7 +305,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
       );
       await tempFile.writeAsBytes(response.bodyBytes);
 
-      await _share.shareFile(tempFile, subject: 'Alien Document Reader Audio');
+      await _share.shareFile(tempFile, subject: 'Naadh Audio');
     } catch (e) {
       if (mounted) _snack('Audio share failed: $e', success: false);
     }
@@ -356,7 +356,7 @@ class _DocumentResultsScreenState extends State<DocumentResultsScreen> {
       final zip = await _storage.createZip(_savedDocument!);
       await _share.shareFile(
         zip,
-        subject: 'Alien Document Reader — Complete Scan',
+        subject: 'Naadh — Complete Scan',
       );
     } catch (e) {
       if (mounted) _snack('Share failed: $e', success: false);
@@ -629,33 +629,36 @@ class _CapturedImageCard extends StatelessWidget {
                         ),
                       );
                     },
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      height: 180,
-                      decoration: BoxDecoration(
-                        color: AppColors.cloud,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.image_not_supported_outlined,
-                              color: Colors.black38,
-                              size: 32,
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Image unavailable',
-                              style: TextStyle(
-                                color: Colors.black54,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                    errorBuilder: (context, error, stackTrace) {
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      return Container(
+                        height: 180,
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurfaceElevated : AppColors.cloud,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ),
-                    ),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.image_not_supported_outlined,
+                                color: isDark ? AppColors.darkTextMuted : Colors.black38,
+                                size: 32,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Image unavailable',
+                                style: TextStyle(
+                                  color: isDark ? AppColors.darkTextMuted : Colors.black54,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
           ),
         ],
@@ -715,7 +718,9 @@ class _SectionCard extends StatelessWidget {
                 tooltip: 'Copy',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                color: Colors.black45,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkTextMuted
+                    : Colors.black45,
               ),
               const SizedBox(width: 4),
               // TTS toggle
@@ -790,7 +795,11 @@ class _TtsButton extends StatelessWidget {
           child: Icon(
             isReading ? Icons.stop_circle_outlined : Icons.volume_up_outlined,
             key: ValueKey(isReading),
-            color: isReading ? AppColors.orange : Colors.black45,
+            color: isReading
+                ? AppColors.orange
+                : (Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkTextMuted
+                    : Colors.black45),
             size: 22,
           ),
         ),

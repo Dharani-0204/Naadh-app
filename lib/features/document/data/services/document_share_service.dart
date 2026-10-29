@@ -9,7 +9,7 @@ class DocumentShareService {
 
   /// Opens the native share sheet with plain text.
   Future<void> shareText(String text, {String? subject}) async {
-    await Share.share(text, subject: subject ?? 'Alien Document Reader');
+    await Share.share(text, subject: subject ?? 'Naadh');
   }
 
   // ─── Files ────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ class DocumentShareService {
     }
     await Share.shareXFiles([
       XFile(file.path, mimeType: mimeType ?? _mimeFromExtension(file.path)),
-    ], subject: subject ?? 'Alien Document Reader');
+    ], subject: subject ?? 'Naadh');
   }
 
   /// Opens the native share sheet with multiple files.
@@ -38,7 +38,7 @@ class DocumentShareService {
     if (xFiles.isEmpty) throw Exception('No files available to share.');
     await Share.shareXFiles(
       xFiles,
-      subject: subject ?? 'Alien Document Reader',
+      subject: subject ?? 'Naadh',
     );
   }
 
@@ -46,11 +46,11 @@ class DocumentShareService {
 
   /// Builds the standard share message for OCR text.
   static String buildOriginalTextMessage(String originalText) =>
-      'Alien Document Reader\n\nExtracted Text:\n\n$originalText';
+      'Naadh Document Scan\n\nExtracted Text:\n\n$originalText';
 
   /// Builds the standard share message for AI summary.
   static String buildSummaryMessage(String summaryText) =>
-      'Alien Document Reader\n\nAI Summary:\n\n$summaryText';
+      'Naadh Document Scan\n\nAI Summary:\n\n$summaryText';
 
   // ─── MIME detection ───────────────────────────────────────────────
 

@@ -13,6 +13,6 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('Welcome to Document Reader'), findsOneWidget);
+    expect(find.text('Welcome to Naadh'), findsOneWidget);
   });
 }
